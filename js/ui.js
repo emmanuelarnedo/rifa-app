@@ -100,9 +100,29 @@ function renderGrid() {
   }
 }
 
+// ---- TOGGLE DATOS BANCARIOS ----
+export function toggleBankFieldsNuevo() {
+  const isOtros = document.querySelector('input[name="banco_tipo_nuevo"]:checked').value === "otros";
+  document.getElementById("custom-bank-fields-nuevo").style.display = isOtros ? "block" : "none";
+}
+
+export function toggleBankFieldsEdit() {
+  const isOtros = document.querySelector('input[name="banco_tipo_edit"]:checked').value === "otros";
+  document.getElementById("custom-bank-fields-edit").style.display = isOtros ? "block" : "none";
+}
+
 // ---- LOGICA DE TALONARIOS (AUTO Y EDICION) ----
 export function openTalonarioModal() {
   document.getElementById("input-encargado").value = "";
+  
+  // Reseteamos datos bancarios
+  document.querySelector('input[name="banco_tipo_nuevo"][value="celeste"]').checked = true;
+  document.querySelector('input[name="banco_id_tipo_nuevo"][value="alias"]').checked = true;
+  document.getElementById("input-banco-id-nuevo").value = "";
+  document.getElementById("input-banco-nombre-nuevo").value = "";
+  document.getElementById("input-banco-titular-nuevo").value = "";
+  toggleBankFieldsNuevo();
+
   document.getElementById("modal-overlay").classList.add("active");
   document.getElementById("modal-talonario").classList.add("active");
 }
@@ -110,6 +130,21 @@ export function openTalonarioModal() {
 export async function guardarTalonario() {
   const encargado = document.getElementById("input-encargado").value.trim();
   if (!encargado) { showToast("⚠️ Ingresa el encargado"); return; }
+
+  // Capturar datos bancarios
+  const bancoTipo = document.querySelector('input[name="banco_tipo_nuevo"]:checked').value;
+  let banco = { tipo: bancoTipo };
+  if (bancoTipo === "otros") {
+    banco.idTipo = document.querySelector('input[name="banco_id_tipo_nuevo"]:checked').value;
+    banco.idValor = document.getElementById("input-banco-id-nuevo").value.trim();
+    banco.nombre = document.getElementById("input-banco-nombre-nuevo").value.trim();
+    banco.titular = document.getElementById("input-banco-titular-nuevo").value.trim();
+    
+    if(!banco.idValor || !banco.nombre || !banco.titular) {
+      showToast("⚠️ Completa todos los datos bancarios");
+      return;
+    }
+  }
 
   // Asignación automática inteligente
   let nextInicio = 1;
@@ -122,7 +157,7 @@ export async function guardarTalonario() {
   const fin = nextInicio + 99;
 
   try {
-    await DB.guardarTalonario({ encargado, inicio: nextInicio, fin });
+    await DB.guardarTalonario({ encargado, inicio: nextInicio, fin, banco });
     showToast(`✅ Talonario creado (${nextInicio} al ${fin})`);
     closeModal();
   } catch (err) {
@@ -139,6 +174,17 @@ export function editarRangoTalonario() {
   document.getElementById("input-edit-encargado").value = activo.encargado;
   document.getElementById("input-edit-inicio").value = activo.inicio;
   document.getElementById("input-edit-fin").value = activo.fin;
+
+  // Cargar datos bancarios
+  const banco = activo.banco || { tipo: "celeste" };
+  document.querySelector(`input[name="banco_tipo_edit"][value="${banco.tipo}"]`).checked = true;
+  if (banco.tipo === "otros") {
+    document.querySelector(`input[name="banco_id_tipo_edit"][value="${banco.idTipo || 'alias'}"]`).checked = true;
+    document.getElementById("input-banco-id-edit").value = banco.idValor || "";
+    document.getElementById("input-banco-nombre-edit").value = banco.nombre || "";
+    document.getElementById("input-banco-titular-edit").value = banco.titular || "";
+  }
+  toggleBankFieldsEdit();
 
   document.getElementById("modal-overlay").classList.add("active");
   document.getElementById("modal-editar").classList.add("active");
@@ -157,14 +203,12 @@ export async function guardarEdicionRango() {
   const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
   if(!activo) return;
 
-  // Validación de nombre
   const encargado = document.getElementById("input-edit-encargado").value.trim();
   if (!encargado) { showToast("⚠️ Ingresa el nombre del encargado"); return; }
 
   const inicio = Number(document.getElementById("input-edit-inicio").value);
   if (isNaN(inicio) || inicio < 1) { showToast("⚠️ Número de inicio inválido"); return; }
   
-  // VALIDACIÓN: Asegurar que el número termine en 1
   if (inicio % 10 !== 1) {
     showToast("⚠️ El número de inicio debe terminar en 1 (ej: 1, 101, 301)");
     return;
@@ -182,12 +226,26 @@ export async function guardarEdicionRango() {
     return;
   }
 
+  // Capturar datos bancarios modificados
+  const bancoTipo = document.querySelector('input[name="banco_tipo_edit"]:checked').value;
+  let banco = { tipo: bancoTipo };
+  if (bancoTipo === "otros") {
+    banco.idTipo = document.querySelector('input[name="banco_id_tipo_edit"]:checked').value;
+    banco.idValor = document.getElementById("input-banco-id-edit").value.trim();
+    banco.nombre = document.getElementById("input-banco-nombre-edit").value.trim();
+    banco.titular = document.getElementById("input-banco-titular-edit").value.trim();
+    
+    if(!banco.idValor || !banco.nombre || !banco.titular) {
+      showToast("⚠️ Completa todos los datos bancarios");
+      return;
+    }
+  }
+
   const btn = document.getElementById("btn-guardar-edicion");
   btn.disabled = true; btn.textContent = "Guardando...";
 
   try {
-    // Actualizamos tanto el nombre como el rango
-    await DB.actualizarTalonario(activo.id, { encargado, inicio, fin });
+    await DB.actualizarTalonario(activo.id, { encargado, inicio, fin, banco });
     showToast(`✅ Talonario actualizado`);
     closeModal();
   } catch(err) {
@@ -266,6 +324,36 @@ export async function descargarImagen() {
   const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
   if (!activo) { showToast("⚠️ No hay talonario activo"); return; }
 
+  // Modificar los datos bancarios del flyer
+  const exportId = document.getElementById("export-banco-id");
+  const exportCbu = document.getElementById("export-banco-cbu");
+  const exportNombre = document.getElementById("export-banco-nombre");
+  const exportTitular = document.getElementById("export-banco-titular");
+
+  const banco = activo.banco || { tipo: "celeste" };
+  
+  if (banco.tipo === "celeste") {
+    exportId.innerHTML = "<strong>Alias:</strong> CELESTEMAZA.UALA";
+    exportId.style.display = "block";
+    exportCbu.innerHTML = "<strong>CBU/CVU:</strong> 34802000003065968";
+    exportCbu.style.display = "block";
+    exportNombre.innerHTML = "<strong>Banco:</strong> Ualá Bank S.A.U";
+    exportTitular.innerHTML = "<strong>Titular:</strong> Celeste Abigail Maza";
+  } else {
+    if (banco.idTipo === "alias") {
+      exportId.innerHTML = `<strong>Alias:</strong> ${banco.idValor}`;
+      exportId.style.display = "block";
+      exportCbu.style.display = "none";
+    } else {
+      exportCbu.innerHTML = `<strong>CBU/CVU:</strong> ${banco.idValor}`;
+      exportCbu.style.display = "block";
+      exportId.style.display = "none";
+    }
+    exportNombre.innerHTML = `<strong>Banco:</strong> ${banco.nombre}`;
+    exportTitular.innerHTML = `<strong>Titular:</strong> ${banco.titular}`;
+  }
+
+  // Cargar grilla
   const exportGrid = document.getElementById("export-grid");
   exportGrid.innerHTML = "";
 
@@ -334,4 +422,9 @@ function showToast(msg) {
   setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
-window.UI = { closeModal, guardarNumero, eliminarNumero, openTalonarioModal, guardarTalonario, editarRangoTalonario, actualizarRangoEditFin, guardarEdicionRango, eliminarTalonario, descargarImagen };
+window.UI = { 
+  closeModal, guardarNumero, eliminarNumero, openTalonarioModal, 
+  guardarTalonario, editarRangoTalonario, actualizarRangoEditFin, 
+  guardarEdicionRango, eliminarTalonario, descargarImagen,
+  toggleBankFieldsNuevo, toggleBankFieldsEdit 
+};

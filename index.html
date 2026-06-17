@@ -7,9 +7,7 @@
   <link rel="stylesheet" href="css/styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
-  <!-- Librería para capturar pantalla y generar imagen -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <!-- Variables de entorno desde Vercel -->
   <script src="/api/env"></script>
 </head>
 <body>
@@ -117,6 +115,37 @@
       <input type="text" id="input-encargado" class="form-input" placeholder="Ej: Tía María" />
     </div>
 
+    <div class="form-group">
+      <label class="form-label">Datos bancarios para cobrar</label>
+      <div class="payment-options" style="grid-template-columns: 1fr;">
+        <label class="payment-opt">
+          <input type="radio" name="banco_tipo_nuevo" value="celeste" checked onchange="UI.toggleBankFieldsNuevo()" />
+          <span class="payment-label">Datos bancarios de Cele</span>
+        </label>
+        <label class="payment-opt">
+          <input type="radio" name="banco_tipo_nuevo" value="otros" onchange="UI.toggleBankFieldsNuevo()" />
+          <span class="payment-label">Otros datos bancarios</span>
+        </label>
+      </div>
+    </div>
+
+    <div id="custom-bank-fields-nuevo" style="display: none; background: var(--color-surface-2); padding: 15px; border-radius: var(--radius-md); margin-bottom: 16px; border: 1px dashed var(--color-border);">
+       <label class="form-label">Tipo de cuenta</label>
+       <div class="payment-options" style="margin-bottom: 12px;">
+         <label class="payment-opt">
+            <input type="radio" name="banco_id_tipo_nuevo" value="alias" checked />
+            <span class="payment-label">Alias</span>
+         </label>
+         <label class="payment-opt">
+            <input type="radio" name="banco_id_tipo_nuevo" value="cbu" />
+            <span class="payment-label">CBU/CVU</span>
+         </label>
+       </div>
+       <input type="text" id="input-banco-id-nuevo" class="form-input" placeholder="Ingresa el Alias o CBU/CVU" style="margin-bottom: 10px;" />
+       <input type="text" id="input-banco-nombre-nuevo" class="form-input" placeholder="Nombre del Banco" style="margin-bottom: 10px;" />
+       <input type="text" id="input-banco-titular-nuevo" class="form-input" placeholder="Nombre del Titular" />
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-primary" onclick="UI.guardarTalonario()">Crear y Asignar Rango</button>
     </div>
@@ -126,7 +155,7 @@
   <div class="modal" id="modal-editar">
     <button class="modal-close" onclick="UI.closeModal()">✕</button>
     <h2 class="modal-title">Editar Talonario</h2>
-    <p style="font-size: 13px; color: var(--color-text-muted); margin-bottom: 15px;">Modifica el nombre del encargado o el rango de números.</p>
+    <p style="font-size: 13px; color: var(--color-text-muted); margin-bottom: 15px;">Modifica el encargado, rango o los datos de cobro.</p>
     
     <div class="form-group">
       <label class="form-label">Nombre del encargado</label>
@@ -143,6 +172,37 @@
       <input type="number" id="input-edit-fin" class="form-input" disabled />
     </div>
 
+    <div class="form-group">
+      <label class="form-label">Datos bancarios para cobrar</label>
+      <div class="payment-options" style="grid-template-columns: 1fr;">
+        <label class="payment-opt">
+          <input type="radio" name="banco_tipo_edit" value="celeste" checked onchange="UI.toggleBankFieldsEdit()" />
+          <span class="payment-label">Datos bancarios de Cele</span>
+        </label>
+        <label class="payment-opt">
+          <input type="radio" name="banco_tipo_edit" value="otros" onchange="UI.toggleBankFieldsEdit()" />
+          <span class="payment-label">Otros datos bancarios</span>
+        </label>
+      </div>
+    </div>
+
+    <div id="custom-bank-fields-edit" style="display: none; background: var(--color-surface-2); padding: 15px; border-radius: var(--radius-md); margin-bottom: 16px; border: 1px dashed var(--color-border);">
+       <label class="form-label">Tipo de cuenta</label>
+       <div class="payment-options" style="margin-bottom: 12px;">
+         <label class="payment-opt">
+            <input type="radio" name="banco_id_tipo_edit" value="alias" checked />
+            <span class="payment-label">Alias</span>
+         </label>
+         <label class="payment-opt">
+            <input type="radio" name="banco_id_tipo_edit" value="cbu" />
+            <span class="payment-label">CBU/CVU</span>
+         </label>
+       </div>
+       <input type="text" id="input-banco-id-edit" class="form-input" placeholder="Ingresa el Alias o CBU/CVU" style="margin-bottom: 10px;" />
+       <input type="text" id="input-banco-nombre-edit" class="form-input" placeholder="Nombre del Banco" style="margin-bottom: 10px;" />
+       <input type="text" id="input-banco-titular-edit" class="form-input" placeholder="Nombre del Titular" />
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-primary" id="btn-guardar-edicion" onclick="UI.guardarEdicionRango()">Guardar Cambios</button>
       <button class="btn btn-danger" onclick="UI.eliminarTalonario()">🗑 Eliminar talonario</button>
@@ -152,33 +212,27 @@
   <!-- CONTENEDOR OCULTO PARA EXPORTAR COMO IMAGEN (Versión Redes Sociales) -->
   <div id="export-container" style="position: absolute; left: -9999px; top: 0; width: 1080px; background: linear-gradient(135deg, #FFEFBA 0%, #FFFFFF 100%); padding: 60px; font-family: 'Inter', sans-serif; color: #333;">
     
-    <!-- Tarjeta Principal (Estilo Ticket) -->
     <div style="background: #ffffff; border-radius: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); padding: 50px; border: 5px solid #F5A623; position: relative; overflow: hidden;">
-      
-      <!-- Cinta decorativa superior -->
       <div style="position: absolute; top: 0; left: 0; width: 100%; height: 15px; background: repeating-linear-gradient(45deg, #F5A623, #F5A623 20px, #1E3045 20px, #1E3045 40px);"></div>
 
-      <!-- Cabecera -->
       <div style="text-align: center; margin-top: 20px; margin-bottom: 40px;">
         <span style="display: inline-block; background: #F5A623; color: #000; font-size: 20px; font-weight: 800; padding: 8px 24px; border-radius: 30px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;">🎟️ Rifa Solidaria</span>
         <h1 style="color: #1E3045; font-size: 70px; font-weight: 900; margin: 0 0 15px 0; text-transform: uppercase; line-height: 1;">Bono Contribución</h1>
         <h2 style="font-size: 26px; font-weight: 600; color: #555; margin: 0; padding: 0 20px; line-height: 1.4;">Destinado a cubrir gastos de cirugía por reemplazo de cadera de <strong style="color: #F5A623; font-size: 30px;">Raúl Walter Maza</strong></h2>
       </div>
       
-      <!-- Grilla de Números -->
       <div id="export-grid" style="display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px; margin-bottom: 40px; background: #f0f4f8; padding: 25px; border-radius: 20px;"></div>
       
-      <!-- Bloque de Info y Premios -->
       <div style="display: flex; gap: 30px; margin-bottom: 30px;">
         
-        <!-- Info de Pago -->
+        <!-- Info de Pago Dinámica -->
         <div style="flex: 1; background: #FFF3E0; border: 4px dashed #F5A623; padding: 35px; border-radius: 24px; color: #4E342E;">
           <p style="font-size: 36px; font-weight: 900; color: #D84315; margin: 0 0 25px 0; text-align: center; border-bottom: 2px dashed #F5A623; padding-bottom: 20px;">Valor: $3.000</p>
           <div style="font-size: 21px; line-height: 1.6;">
-            <p style="margin: 0;"><strong>Alias:</strong> CELESTEMAZA.UALA</p>
-            <p style="margin: 0;"><strong>CBU/CVU:</strong> 34802000003065968</p>
-            <p style="margin: 0;"><strong>Banco:</strong> Ualá Bank S.A.U</p>
-            <p style="margin: 0;"><strong>Titular:</strong> Celeste Abigail Maza</p>
+            <p style="margin: 0;" id="export-banco-id"><strong>Alias:</strong> CELESTEMAZA.UALA</p>
+            <p style="margin: 0; display: none;" id="export-banco-cbu"><strong>CBU/CVU:</strong> 34802000003065968</p>
+            <p style="margin: 0;" id="export-banco-nombre"><strong>Banco:</strong> Ualá Bank S.A.U</p>
+            <p style="margin: 0;" id="export-banco-titular"><strong>Titular:</strong> Celeste Abigail Maza</p>
           </div>
           <div style="margin-top: 25px; background: #ffffff; border: 2px dashed #F5A623; padding: 15px; border-radius: 16px; text-align: center;">
             <p style="font-size: 18px; margin: 0 0 5px 0; color: #4E342E;">📲 Enviar comprobante al:</p>
@@ -186,7 +240,6 @@
           </div>
         </div>
         
-        <!-- Premios -->
         <div style="flex: 1; background: #FFF3E0; border: 4px dashed #F5A623; padding: 35px; border-radius: 24px;">
           <h3 style="font-size: 32px; font-weight: 900; color: #D84315; margin: 0 0 20px 0; text-align: center; text-transform: uppercase;">🎁 Premios</h3>
           <ul style="list-style: none; padding: 0; margin: 0; font-size: 24px; line-height: 1.4; color: #4E342E;">
@@ -195,10 +248,8 @@
             <li style="display: flex; align-items: center; gap: 15px;"><span style="font-size: 35px;">🎂</span> <div><strong>3° PREMIO:</strong><br>1 Torta</div></li>
           </ul>
         </div>
-
       </div>
       
-      <!-- Footer Sorteo -->
       <div style="text-align: center; background: #ffebee; padding: 25px; border-radius: 20px; border: 2px solid #ffcdd2;">
         <p style="margin: 0; font-weight: 900; font-size: 26px; color: #d32f2f;">📅 Sortea el Viernes 31 de Julio de 2026</p>
         <p style="margin: 5px 0 0 0; font-size: 22px; font-weight: 700; color: #b71c1c;">por Tómbola Nocturna</p>
@@ -207,7 +258,6 @@
     </div>
   </div>
 
-  <!-- SCRIPTS -->
   <script type="module" src="js/firebase-config.js"></script>
   <script type="module" src="js/db.js"></script>
   <script type="module" src="js/ui.js"></script>
