@@ -29,6 +29,7 @@ export function updateTalonarios(data) {
   renderGrid();
 }
 
+// ---- STATS POR TALONARIO ----
 function renderStats() {
   const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
   let vendidos = 0, efectivo = 0, transferencia = 0;
@@ -50,6 +51,7 @@ function renderStats() {
   document.getElementById("stat-transfer").textContent = `$${transferencia.toLocaleString("es-AR")}`;
 }
 
+// ---- TABS ----
 function renderTabs() {
   const container = document.getElementById("talonarios-list");
   container.innerHTML = "";
@@ -65,6 +67,7 @@ function renderTabs() {
   });
 }
 
+// ---- GRID ----
 function renderGrid() {
   const grid = document.getElementById("numbers-grid");
   const titulo = document.getElementById("talonario-activo-titulo");
@@ -97,6 +100,7 @@ function renderGrid() {
   }
 }
 
+// ---- LOGICA DE TALONARIOS (AUTO Y EDICION) ----
 export function openTalonarioModal() {
   document.getElementById("input-encargado").value = "";
   document.getElementById("modal-overlay").classList.add("active");
@@ -107,6 +111,7 @@ export async function guardarTalonario() {
   const encargado = document.getElementById("input-encargado").value.trim();
   if (!encargado) { showToast("⚠️ Ingresa el encargado"); return; }
 
+  // Asignación automática inteligente
   let nextInicio = 1;
   while (true) {
     const testFin = nextInicio + 99;
@@ -130,6 +135,8 @@ export function editarRangoTalonario() {
   const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
   if(!activo) return;
 
+  // Cargar datos actuales
+  document.getElementById("input-edit-encargado").value = activo.encargado;
   document.getElementById("input-edit-inicio").value = activo.inicio;
   document.getElementById("input-edit-fin").value = activo.fin;
 
@@ -150,9 +157,14 @@ export async function guardarEdicionRango() {
   const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
   if(!activo) return;
 
+  // Validación de nombre
+  const encargado = document.getElementById("input-edit-encargado").value.trim();
+  if (!encargado) { showToast("⚠️ Ingresa el nombre del encargado"); return; }
+
   const inicio = Number(document.getElementById("input-edit-inicio").value);
   if (isNaN(inicio) || inicio < 1) { showToast("⚠️ Número de inicio inválido"); return; }
   
+  // VALIDACIÓN: Asegurar que el número termine en 1
   if (inicio % 10 !== 1) {
     showToast("⚠️ El número de inicio debe terminar en 1 (ej: 1, 101, 301)");
     return;
@@ -174,11 +186,12 @@ export async function guardarEdicionRango() {
   btn.disabled = true; btn.textContent = "Guardando...";
 
   try {
-    await DB.actualizarTalonario(activo.id, { inicio, fin });
-    showToast(`✅ Rango actualizado: ${inicio} al ${fin}`);
+    // Actualizamos tanto el nombre como el rango
+    await DB.actualizarTalonario(activo.id, { encargado, inicio, fin });
+    showToast(`✅ Talonario actualizado`);
     closeModal();
   } catch(err) {
-    showToast("❌ Error al actualizar rango");
+    showToast("❌ Error al actualizar");
   } finally {
     btn.disabled = false; btn.textContent = "Guardar Cambios";
   }
@@ -200,6 +213,7 @@ export async function eliminarTalonario() {
   }
 }
 
+// ---- MODAL NÚMERO ----
 function openModal(key) {
   const data = _state.numeros[key];
   const isSold = !!data;
@@ -247,6 +261,7 @@ export async function eliminarNumero() {
   catch (err) { showToast("❌ Error al eliminar"); }
 }
 
+// ---- DESCARGAR IMAGEN (HTML2CANVAS) ----
 export async function descargarImagen() {
   const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
   if (!activo) { showToast("⚠️ No hay talonario activo"); return; }
