@@ -6,17 +6,17 @@
   <title>Rifa - Cirugía Raul Walter Maza</title>
   <link rel="stylesheet" href="css/styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <!-- Variables de entorno desde Vercel -->
-  <script src="/api/env"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="/api/env"></script>
 </head>
 <body>
 
-  <!-- HEADER -->
   <header class="site-header">
     <div class="header-inner">
       <div class="header-badge">🎟️ RIFA SOLIDARIA</div>
       <h1 class="site-title">Rifa para solventar gastos de cirugía de<br><span class="highlight">Raul Walter Maza</span></h1>
+      
       <div class="stats-bar">
         <div class="stat">
           <span class="stat-number" id="stat-vendidos">0</span>
@@ -24,43 +24,43 @@
         </div>
         <div class="stat-divider"></div>
         <div class="stat">
-          <span class="stat-number" id="stat-disponibles">100</span>
-          <span class="stat-label">Disponibles</span>
+          <span class="stat-number text-efectivo" id="stat-efectivo">$0</span>
+          <span class="stat-label">Recaudado Efectivo</span>
         </div>
         <div class="stat-divider"></div>
         <div class="stat">
-          <span class="stat-number" id="stat-recaudado">$0</span>
-          <span class="stat-label">Recaudado</span>
+          <span class="stat-number text-transfer" id="stat-transfer">$0</span>
+          <span class="stat-label">Recaudado Transf.</span>
         </div>
       </div>
     </div>
   </header>
 
-  <!-- PROGRESS BAR -->
-  <div class="progress-wrap">
-    <div class="progress-bar" id="progress-bar"></div>
-    <span class="progress-label" id="progress-label">0% completado</span>
-  </div>
+  <nav class="talonarios-nav">
+    <div class="talonarios-list" id="talonarios-list"></div>
+    <button class="btn-nuevo-talonario" onclick="UI.openTalonarioModal()">+ Nuevo Talonario</button>
+  </nav>
 
-  <!-- GRID -->
   <main class="main-content">
-    <div class="legend">
-      <span class="legend-item"><span class="dot dot-available"></span>Disponible</span>
-      <span class="legend-item"><span class="dot dot-sold"></span>Vendido</span>
+    <div class="talonario-info">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <h3 id="talonario-activo-titulo">Cargando...</h3>
+        <button id="btn-editar-rango" class="btn-icon" style="display: none;" onclick="UI.editarRangoTalonario()">✏️ Editar</button>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="dot dot-available"></span>Disponible</span>
+        <span class="legend-item"><span class="dot dot-sold"></span>Vendido</span>
+      </div>
     </div>
     <div class="numbers-grid" id="numbers-grid"></div>
   </main>
 
-  <!-- ACTIONS -->
   <div class="actions-bar">
-    <button class="btn btn-print" onclick="UI.printView()">🖨️ Ver / Imprimir</button>
-    <button class="btn btn-secondary" onclick="UI.showPriceModal()">💰 Precio del número</button>
+    <button class="btn btn-print" id="btn-descargar" onclick="UI.descargarImagen()">📸 Descargar Imagen</button>
   </div>
 
-  <!-- TOOLTIP -->
   <div class="tooltip" id="tooltip"></div>
 
-  <!-- MODAL: REGISTRO / EDICIÓN -->
   <div class="modal-overlay" id="modal-overlay" onclick="UI.closeModal()"></div>
   <div class="modal" id="modal-form">
     <button class="modal-close" onclick="UI.closeModal()">✕</button>
@@ -69,11 +69,11 @@
 
     <div class="form-group">
       <label class="form-label">Nombre y Apellido *</label>
-      <input type="text" id="input-nombre" class="form-input" placeholder="Ej: Juan Pérez" autocomplete="off" />
+      <input type="text" id="input-nombre" class="form-input" autocomplete="off" />
     </div>
 
     <div class="form-group">
-      <label class="form-label">Forma de pago *</label>
+      <label class="form-label">Forma de pago * ($3000)</label>
       <div class="payment-options">
         <label class="payment-opt">
           <input type="radio" name="pago" value="efectivo" id="pago-efectivo" />
@@ -88,7 +88,7 @@
 
     <div class="form-group">
       <label class="form-label">Teléfono (opcional)</label>
-      <input type="tel" id="input-telefono" class="form-input" placeholder="Ej: 11-2345-6789" />
+      <input type="tel" id="input-telefono" class="form-input" />
     </div>
 
     <div class="modal-actions">
@@ -97,20 +97,91 @@
     </div>
   </div>
 
-  <!-- MODAL: PRECIO -->
-  <div class="modal" id="modal-precio" style="display:none">
-    <button class="modal-close" onclick="document.getElementById('modal-precio').style.display='none'; document.getElementById('modal-overlay').classList.remove('active')">✕</button>
-    <h2 class="modal-title">💰 Precio por número</h2>
+  <div class="modal" id="modal-talonario">
+    <button class="modal-close" onclick="UI.closeModal()">✕</button>
+    <h2 class="modal-title">Nuevo Talonario</h2>
+    <p style="font-size: 13px; color: var(--color-text-muted); margin-bottom: 15px;">Se asignará automáticamente el siguiente rango de 100 números disponible.</p>
+    
     <div class="form-group">
-      <label class="form-label">Valor de cada número ($)</label>
-      <input type="number" id="input-precio" class="form-input" placeholder="Ej: 1000" min="0" />
+      <label class="form-label">Nombre del encargado *</label>
+      <input type="text" id="input-encargado" class="form-input" placeholder="Ej: Tía María" />
     </div>
+
     <div class="modal-actions">
-      <button class="btn btn-primary" onclick="UI.guardarPrecio()">Guardar precio</button>
+      <button class="btn btn-primary" onclick="UI.guardarTalonario()">Crear y Asignar Rango</button>
     </div>
   </div>
 
-  <!-- FIREBASE -->
+  <div class="modal" id="modal-editar">
+    <button class="modal-close" onclick="UI.closeModal()">✕</button>
+    <h2 class="modal-title">Editar Rango</h2>
+    <p style="font-size: 13px; color: var(--color-text-muted); margin-bottom: 15px;">El talonario siempre constará de 100 números consecutivos.</p>
+    
+    <div class="form-group">
+      <label class="form-label">Nuevo número de inicio</label>
+      <input type="number" id="input-edit-inicio" class="form-input" min="1" oninput="UI.actualizarRangoEditFin()" placeholder="Ej: 301" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Número de fin (Automático)</label>
+      <input type="number" id="input-edit-fin" class="form-input" disabled />
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="btn-guardar-edicion" onclick="UI.guardarEdicionRango()">Guardar Cambios</button>
+      <button class="btn btn-danger" onclick="UI.eliminarTalonario()">🗑 Eliminar</button>
+    </div>
+  </div>
+
+  <div id="export-container" style="position: absolute; left: -9999px; top: 0; width: 1080px; background: linear-gradient(135deg, #FFEFBA 0%, #FFFFFF 100%); padding: 60px; font-family: 'Inter', sans-serif; color: #333;">
+    
+    <div style="background: #ffffff; border-radius: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); padding: 50px; border: 5px solid #F5A623; position: relative; overflow: hidden;">
+      
+      <div style="position: absolute; top: 0; left: 0; width: 100%; height: 15px; background: repeating-linear-gradient(45deg, #F5A623, #F5A623 20px, #1E3045 20px, #1E3045 40px);"></div>
+
+      <div style="text-align: center; margin-top: 20px; margin-bottom: 40px;">
+        <span style="display: inline-block; background: #F5A623; color: #000; font-size: 20px; font-weight: 800; padding: 8px 24px; border-radius: 30px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;">🎟️ Rifa Solidaria</span>
+        <h1 style="color: #1E3045; font-size: 70px; font-weight: 900; margin: 0 0 15px 0; text-transform: uppercase; line-height: 1;">Bono Contribución</h1>
+        <h2 style="font-size: 26px; font-weight: 600; color: #555; margin: 0; padding: 0 20px; line-height: 1.4;">Destinado a cubrir gastos de cirugía por reemplazo de cadera de nuestro padre <strong style="color: #F5A623; font-size: 30px;">Raúl Walter Maza</strong></h2>
+      </div>
+      
+      <div id="export-grid" style="display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px; margin-bottom: 40px; background: #f0f4f8; padding: 25px; border-radius: 20px;"></div>
+      
+      <div style="display: flex; gap: 30px; margin-bottom: 30px;">
+        
+        <div style="flex: 1; background: #1E3045; color: #fff; padding: 35px; border-radius: 24px;">
+          <p style="font-size: 36px; font-weight: 900; color: #4ADE80; margin: 0 0 25px 0; text-align: center; border-bottom: 2px dashed #3A506B; padding-bottom: 20px;">Valor: $3.000</p>
+          <div style="font-size: 21px; line-height: 1.6; color: #cbd5e1;">
+            <p style="margin: 0;"><strong>Alias:</strong> <span style="color: #fff;">CELESTEMAZA.UALA</span></p>
+            <p style="margin: 0;"><strong>CBU/CVU:</strong> <span style="color: #fff;">34802000003065968</span></p>
+            <p style="margin: 0;"><strong>Banco:</strong> <span style="color: #fff;">Ualá Bank S.A.U</span></p>
+            <p style="margin: 0;"><strong>Titular:</strong> <span style="color: #fff;">Celeste Abigail Maza</span></p>
+          </div>
+          <div style="margin-top: 25px; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 16px; text-align: center;">
+            <p style="font-size: 18px; margin: 0 0 5px 0;">📲 Enviar comprobante al:</p>
+            <p style="font-size: 28px; font-weight: bold; color: #F5A623; margin: 0;">3865-636557</p>
+          </div>
+        </div>
+        
+        <div style="flex: 1; background: #FFF3E0; border: 4px dashed #F5A623; padding: 35px; border-radius: 24px;">
+          <h3 style="font-size: 32px; font-weight: 900; color: #D84315; margin: 0 0 20px 0; text-align: center; text-transform: uppercase;">🎁 Premios</h3>
+          <ul style="list-style: none; padding: 0; margin: 0; font-size: 24px; line-height: 1.4; color: #4E342E;">
+            <li style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px;"><span style="font-size: 35px;">🥩</span> <div><strong>1° PREMIO:</strong><br>3kg de asado</div></li>
+            <li style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px;"><span style="font-size: 35px;">🥤</span> <div><strong>2° PREMIO:</strong><br>Promo Coca + Fernet + Hielo</div></li>
+            <li style="display: flex; align-items: center; gap: 15px;"><span style="font-size: 35px;">🎂</span> <div><strong>3° PREMIO:</strong><br>1 Torta</div></li>
+          </ul>
+        </div>
+
+      </div>
+      
+      <div style="text-align: center; background: #ffebee; padding: 25px; border-radius: 20px; border: 2px solid #ffcdd2;">
+        <p style="margin: 0; font-weight: 900; font-size: 26px; color: #d32f2f;">📅 Sortea el Viernes 31 de Julio de 2026</p>
+        <p style="margin: 5px 0 0 0; font-size: 22px; font-weight: 700; color: #b71c1c;">por Tómbola Nocturna</p>
+      </div>
+
+    </div>
+  </div>
+
   <script type="module" src="js/firebase-config.js"></script>
   <script type="module" src="js/db.js"></script>
   <script type="module" src="js/ui.js"></script>

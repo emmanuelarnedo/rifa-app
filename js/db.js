@@ -1,59 +1,47 @@
-// js/db.js
-// ============================================================
-//  Capa de acceso a datos (Firestore)
-//  Todas las operaciones de BD están aquí — fácil de cambiar
-//  de backend en el futuro sin tocar la UI.
-// ============================================================
-
 import { db } from "./firebase-config.js";
-import {
-  collection,
-  doc,
-  setDoc,
-  deleteDoc,
-  onSnapshot,
-  getDoc,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const COLLECTION = "numeros";
-const CONFIG_DOC  = "config/settings";
+const COL_NUMEROS = "numeros";
+const COL_TALONARIOS = "talonarios";
 
-// ---- Escuchar cambios en tiempo real ----
 export function suscribirNumeros(callback) {
-  const col = collection(db, COLLECTION);
-  return onSnapshot(col, (snapshot) => {
+  return onSnapshot(collection(db, COL_NUMEROS), (snap) => {
     const data = {};
-    snapshot.forEach((d) => {
-      data[d.id] = d.data();
-    });
+    snap.forEach((d) => { data[d.id] = d.data(); });
     callback(data);
   });
 }
 
-// ---- Guardar / actualizar un número ----
 export async function guardarNumero(numero, payload) {
-  // numero: string "001"..."100"
-  const ref = doc(db, COLLECTION, numero);
-  await setDoc(ref, {
-    ...payload,
-    vendidoEn: Date.now(),
+  const ref = doc(db, COL_NUMEROS, numero);
+  await setDoc(ref, { ...payload, vendidoEn: Date.now() });
+}
+
+export async function eliminarNumero(numero) {
+  await deleteDoc(doc(db, COL_NUMEROS, numero));
+}
+
+export function suscribirTalonarios(callback) {
+  return onSnapshot(collection(db, COL_TALONARIOS), (snap) => {
+    const list = [];
+    snap.forEach((d) => { list.push({ id: d.id, ...d.data() }); });
+    list.sort((a, b) => a.inicio - b.inicio);
+    callback(list);
   });
 }
 
-// ---- Eliminar un número (liberar) ----
-export async function eliminarNumero(numero) {
-  const ref = doc(db, COLLECTION, numero);
+export async function guardarTalonario(payload) {
+  const id = "tal_" + Date.now(); 
+  const ref = doc(db, COL_TALONARIOS, id);
+  await setDoc(ref, { ...payload, creadoEn: Date.now() });
+}
+
+export async function actualizarTalonario(id, payload) {
+  const ref = doc(db, COL_TALONARIOS, id);
+  await updateDoc(ref, payload);
+}
+
+export async function eliminarTalonario(id) {
+  const ref = doc(db, COL_TALONARIOS, id);
   await deleteDoc(ref);
-}
-
-// ---- Config: precio por número ----
-export async function guardarPrecio(precio) {
-  const ref = doc(db, CONFIG_DOC);
-  await setDoc(ref, { precioPorNumero: Number(precio) }, { merge: true });
-}
-
-export async function obtenerConfig() {
-  const ref = doc(db, CONFIG_DOC);
-  const snap = await getDoc(ref);
-  return snap.exists() ? snap.data() : { precioPorNumero: 0 };
 }

@@ -1,265 +1,317 @@
-// js/ui.js
-// ============================================================
-//  Módulo de UI — renderizado, modal, tooltip, interacciones
-// ============================================================
-
 import * as DB from "./db.js";
 
-// ---- Estado local de UI ----
+const PRECIO_FIJO = 3000;
+
 let _state = {
-  numeros:    {},   // { "001": { nombre, pago, telefono, vendidoEn } }
-  precio:     0,
-  seleccion:  null, // número actualmente en el modal
+  numeros: {},
+  talonarios: [],
+  talonarioActivoId: null,
+  seleccion: null,
 };
 
-// ---- INIT ----
-export function init(numerosData, precio) {
-  _state.numeros = numerosData;
-  _state.precio  = precio;
-  renderGrid();
+export function init() { renderGrid(); }
+
+export function updateNumeros(data) {
+  _state.numeros = data;
   renderStats();
+  renderGrid();
 }
 
-export function updateNumeros(numerosData) {
-  _state.numeros = numerosData;
-  renderGrid();
+export function updateTalonarios(data) {
+  _state.talonarios = data;
+  if (!_state.talonarioActivoId && data.length > 0) {
+    _state.talonarioActivoId = data[0].id;
+  } else if (data.length === 0) {
+    _state.talonarioActivoId = null;
+  }
+  renderTabs();
   renderStats();
+  renderGrid();
 }
 
-export function setPrecio(p) { _state.precio = p; renderStats(); }
+function renderStats() {
+  const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
+  let vendidos = 0, efectivo = 0, transferencia = 0;
 
-// ---- GRID ----
+  if (activo) {
+    for (let i = activo.inicio; i <= activo.fin; i++) {
+      const key = String(i).padStart(3, "0");
+      const num = _state.numeros[key];
+      if (num) {
+        vendidos++;
+        if (num.pago === "efectivo") efectivo += PRECIO_FIJO;
+        else if (num.pago === "transferencia") transferencia += PRECIO_FIJO;
+      }
+    }
+  }
+
+  document.getElementById("stat-vendidos").textContent = vendidos;
+  document.getElementById("stat-efectivo").textContent = `$${efectivo.toLocaleString("es-AR")}`;
+  document.getElementById("stat-transfer").textContent = `$${transferencia.toLocaleString("es-AR")}`;
+}
+
+function renderTabs() {
+  const container = document.getElementById("talonarios-list");
+  container.innerHTML = "";
+  _state.talonarios.forEach(tal => {
+    const btn = document.createElement("button");
+    btn.className = "tab-talonario" + (tal.id === _state.talonarioActivoId ? " active" : "");
+    btn.textContent = tal.encargado;
+    btn.onclick = () => {
+      _state.talonarioActivoId = tal.id;
+      renderTabs(); renderStats(); renderGrid();
+    };
+    container.appendChild(btn);
+  });
+}
+
 function renderGrid() {
   const grid = document.getElementById("numbers-grid");
-  if (!grid) return;
+  const titulo = document.getElementById("talonario-activo-titulo");
+  const btnEditar = document.getElementById("btn-editar-rango");
+  
+  if (_state.talonarios.length === 0) {
+    grid.innerHTML = "<p style='grid-column: span 10; text-align: center; padding: 20px;'>No hay talonarios creados. Agrega uno para comenzar.</p>";
+    titulo.textContent = "Sin talonarios";
+    btnEditar.style.display = "none";
+    return;
+  }
+
+  const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
+  if (!activo) return;
+
+  titulo.textContent = `Talonario de ${activo.encargado} (${String(activo.inicio).padStart(3,'0')} al ${String(activo.fin).padStart(3,'0')})`;
+  btnEditar.style.display = "inline-block"; 
   grid.innerHTML = "";
 
-  for (let i = 1; i <= 100; i++) {
-    const key    = String(i).padStart(3, "0");
-    const sold   = !!_state.numeros[key];
-    const cell   = document.createElement("button");
+  for (let i = activo.inicio; i <= activo.fin; i++) {
+    const key = String(i).padStart(3, "0");
+    const data = _state.numeros[key];
+    const sold = !!data;
+    
+    const cell = document.createElement("button");
     cell.className = "number-cell" + (sold ? " sold" : "");
     cell.textContent = key;
-    cell.setAttribute("aria-label", sold
-      ? `Número ${key} — vendido a ${_state.numeros[key].nombre}`
-      : `Número ${key} — disponible`);
-    cell.setAttribute("data-num", key);
-
-    // Events
-    cell.addEventListener("click", () => handleClick(key));
-    cell.addEventListener("mouseenter", (e) => showTooltip(e, key));
-    cell.addEventListener("mouseleave", hideTooltip);
-    cell.addEventListener("touchstart", (e) => handleTouch(e, key), { passive: true });
-
+    cell.onclick = () => openModal(key);
     grid.appendChild(cell);
   }
 }
 
-// ---- STATS ----
-function renderStats() {
-  const total     = Object.keys(_state.numeros).length;
-  const disponibles = 100 - total;
-  const recaudado = _state.precio > 0 ? `$${(total * _state.precio).toLocaleString("es-AR")}` : "—";
-
-  document.getElementById("stat-vendidos").textContent    = total;
-  document.getElementById("stat-disponibles").textContent = disponibles;
-  document.getElementById("stat-recaudado").textContent   = recaudado;
-
-  const pct = total;
-  document.getElementById("progress-bar").style.width    = pct + "%";
-  document.getElementById("progress-label").textContent  = `${pct}% completado`;
+export function openTalonarioModal() {
+  document.getElementById("input-encargado").value = "";
+  document.getElementById("modal-overlay").classList.add("active");
+  document.getElementById("modal-talonario").classList.add("active");
 }
 
-// ---- CLICK / TOUCH ----
-function handleClick(key) {
-  _state.seleccion = key;
-  openModal(key);
+export async function guardarTalonario() {
+  const encargado = document.getElementById("input-encargado").value.trim();
+  if (!encargado) { showToast("⚠️ Ingresa el encargado"); return; }
+
+  let nextInicio = 1;
+  while (true) {
+    const testFin = nextInicio + 99;
+    const solapa = _state.talonarios.some(t => !(testFin < t.inicio || nextInicio > t.fin));
+    if (!solapa) break;
+    nextInicio += 100;
+  }
+  const fin = nextInicio + 99;
+
+  try {
+    await DB.guardarTalonario({ encargado, inicio: nextInicio, fin });
+    showToast(`✅ Talonario creado (${nextInicio} al ${fin})`);
+    closeModal();
+  } catch (err) {
+    console.error(err);
+    showToast("❌ Error al crear talonario");
+  }
 }
 
-let _touchTimer;
-function handleTouch(e, key) {
-  // tap rápido → click; longpress → tooltip
-  _touchTimer = setTimeout(() => {
-    showTooltipMobile(key);
-  }, 500);
-  e.currentTarget.addEventListener("touchend", () => {
-    clearTimeout(_touchTimer);
-  }, { once: true });
-}
+export function editarRangoTalonario() {
+  const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
+  if(!activo) return;
 
-// ---- TOOLTIP ----
-function showTooltip(e, key) {
-  const data = _state.numeros[key];
-  if (!data) return;
-  const tip = document.getElementById("tooltip");
-  tip.innerHTML = buildTooltipHTML(key, data);
-  positionTooltip(e.clientX, e.clientY);
-  tip.classList.add("visible");
-}
-
-function showTooltipMobile(key) {
-  const data = _state.numeros[key];
-  if (!data) return;
-  const tip = document.getElementById("tooltip");
-  tip.innerHTML = buildTooltipHTML(key, data);
-  tip.style.left   = "50%";
-  tip.style.top    = "30%";
-  tip.style.transform = "translateX(-50%)";
-  tip.classList.add("visible");
-  setTimeout(() => tip.classList.remove("visible"), 3000);
-}
-
-function hideTooltip() {
-  document.getElementById("tooltip").classList.remove("visible");
-}
-
-function positionTooltip(x, y) {
-  const tip = document.getElementById("tooltip");
-  const vw = window.innerWidth;
-  let left = x + 12;
-  if (left + 230 > vw) left = x - 230;
-  tip.style.left      = left + "px";
-  tip.style.top       = (y - 10) + "px";
-  tip.style.transform = "none";
-}
-
-function buildTooltipHTML(key, data) {
-  const pagoClass = data.pago === "efectivo" ? "efectivo" : "transferencia";
-  const pagoLabel = data.pago === "efectivo" ? "💵 Efectivo" : "📲 Transferencia";
-  const fecha = data.vendidoEn
-    ? new Date(data.vendidoEn).toLocaleDateString("es-AR", { day:"2-digit", month:"short" })
-    : "";
-  return `
-    <div class="tooltip-name">🎟 #${key} — ${data.nombre}</div>
-    <div class="tooltip-meta">
-      <span class="tooltip-pago ${pagoClass}">${pagoLabel}</span>
-      ${fecha ? `<span>${fecha}</span>` : ""}
-      ${data.telefono ? `<span>📞 ${data.telefono}</span>` : ""}
-    </div>`;
-}
-
-// ---- MODAL ----
-function openModal(key) {
-  const data  = _state.numeros[key];
-  const isSold = !!data;
-
-  document.getElementById("modal-title").textContent        = isSold ? "Editar número" : "Registrar número";
-  document.getElementById("modal-number-badge").textContent = `#${key}`;
-  document.getElementById("input-nombre").value             = data?.nombre   || "";
-  document.getElementById("input-telefono").value           = data?.telefono || "";
-  document.getElementById("btn-eliminar").style.display     = isSold ? "flex" : "none";
-
-  // Payment
-  const pagoEfect = document.getElementById("pago-efectivo");
-  const pagoTrans = document.getElementById("pago-transfer");
-  pagoEfect.checked = data?.pago === "efectivo" || !isSold;
-  pagoTrans.checked = data?.pago === "transferencia";
+  document.getElementById("input-edit-inicio").value = activo.inicio;
+  document.getElementById("input-edit-fin").value = activo.fin;
 
   document.getElementById("modal-overlay").classList.add("active");
+  document.getElementById("modal-editar").classList.add("active");
+}
+
+export function actualizarRangoEditFin() {
+  const inicio = Number(document.getElementById("input-edit-inicio").value);
+  if (!isNaN(inicio) && inicio > 0) {
+    document.getElementById("input-edit-fin").value = inicio + 99;
+  } else {
+    document.getElementById("input-edit-fin").value = "";
+  }
+}
+
+export async function guardarEdicionRango() {
+  const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
+  if(!activo) return;
+
+  const inicio = Number(document.getElementById("input-edit-inicio").value);
+  if (isNaN(inicio) || inicio < 1) { showToast("⚠️ Número de inicio inválido"); return; }
+  
+  const fin = inicio + 99;
+
+  const solapa = _state.talonarios.some(t => {
+    if (t.id === activo.id) return false; 
+    return !(fin < t.inicio || inicio > t.fin);
+  });
+
+  if (solapa) {
+    showToast("❌ Rango ocupado. Este rango choca con otro talonario.");
+    return;
+  }
+
+  const btn = document.getElementById("btn-guardar-edicion");
+  btn.disabled = true; btn.textContent = "Guardando...";
+
+  try {
+    await DB.actualizarTalonario(activo.id, { inicio, fin });
+    showToast(`✅ Rango actualizado: ${inicio} al ${fin}`);
+    closeModal();
+  } catch(err) {
+    showToast("❌ Error al actualizar rango");
+  } finally {
+    btn.disabled = false; btn.textContent = "Guardar Cambios";
+  }
+}
+
+export async function eliminarTalonario() {
+  const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
+  if(!activo) return;
+
+  if (!confirm(`¿Estás seguro de eliminar el talonario de ${activo.encargado}?`)) return;
+
+  try {
+    await DB.eliminarTalonario(activo.id);
+    _state.talonarioActivoId = null;
+    showToast(`🗑 Talonario eliminado`);
+    closeModal();
+  } catch(err) {
+    showToast("❌ Error al eliminar talonario");
+  }
+}
+
+function openModal(key) {
+  const data = _state.numeros[key];
+  const isSold = !!data;
+  document.getElementById("modal-title").textContent = isSold ? "Editar venta" : "Registrar venta";
+  document.getElementById("modal-number-badge").textContent = `#${key}`;
+  document.getElementById("input-nombre").value = data?.nombre || "";
+  document.getElementById("input-telefono").value = data?.telefono || "";
+  document.getElementById("btn-eliminar").style.display = isSold ? "block" : "none";
+  document.getElementById("pago-efectivo").checked = data?.pago === "efectivo" || !isSold;
+  document.getElementById("pago-transfer").checked = data?.pago === "transferencia";
+
+  _state.seleccion = key;
+  document.getElementById("modal-overlay").classList.add("active");
   document.getElementById("modal-form").classList.add("active");
-  setTimeout(() => document.getElementById("input-nombre").focus(), 300);
 }
 
 export function closeModal() {
   document.getElementById("modal-overlay").classList.remove("active");
   document.getElementById("modal-form").classList.remove("active");
+  document.getElementById("modal-talonario").classList.remove("active");
+  document.getElementById("modal-editar").classList.remove("active");
   _state.seleccion = null;
 }
 
-// ---- GUARDAR ----
 export async function guardarNumero() {
-  const key    = _state.seleccion;
+  const key = _state.seleccion;
   const nombre = document.getElementById("input-nombre").value.trim();
-  const pago   = document.querySelector('input[name="pago"]:checked')?.value;
-  const tel    = document.getElementById("input-telefono").value.trim();
-
-  if (!nombre) { showToast("⚠️ Ingresá el nombre del comprador"); return; }
-  if (!pago)   { showToast("⚠️ Seleccioná la forma de pago"); return; }
-
+  const pago = document.querySelector('input[name="pago"]:checked')?.value;
+  const tel = document.getElementById("input-telefono").value.trim();
+  if (!nombre) { showToast("⚠️ Ingresa el nombre del comprador"); return; }
+  
   const btn = document.getElementById("btn-guardar");
-  btn.textContent = "Guardando…";
-  btn.disabled    = true;
-
+  btn.disabled = true; btn.textContent = "Guardando...";
   try {
     await DB.guardarNumero(key, { nombre, pago, telefono: tel || null });
-    showToast(`✅ Número ${key} registrado a ${nombre}`);
-    closeModal();
-  } catch (err) {
-    console.error(err);
-    showToast("❌ Error al guardar. Verificá tu conexión.");
-  } finally {
-    btn.textContent = "✓ Guardar";
-    btn.disabled    = false;
-  }
+    showToast(`✅ #${key} guardado`); closeModal();
+  } catch (err) { showToast("❌ Error al guardar"); } 
+  finally { btn.disabled = false; btn.textContent = "✓ Guardar"; }
 }
 
-// ---- ELIMINAR ----
 export async function eliminarNumero() {
   const key = _state.seleccion;
-  if (!confirm(`¿Liberar el número ${key}? Esta acción no se puede deshacer.`)) return;
+  if (!confirm(`¿Liberar el número ${key}?`)) return;
+  try { await DB.eliminarNumero(key); showToast(`🗑 #${key} liberado`); closeModal(); } 
+  catch (err) { showToast("❌ Error al eliminar"); }
+}
+
+export async function descargarImagen() {
+  const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
+  if (!activo) { showToast("⚠️ No hay talonario activo"); return; }
+
+  const exportGrid = document.getElementById("export-grid");
+  exportGrid.innerHTML = "";
+
+  for (let i = activo.inicio; i <= activo.fin; i++) {
+    const key = String(i).padStart(3, "0");
+    const isSold = !!_state.numeros[key];
+
+    const cell = document.createElement("div");
+    cell.textContent = key;
+    cell.style.display = "flex";
+    cell.style.alignItems = "center";
+    cell.style.justifyContent = "center";
+    cell.style.aspectRatio = "1";
+    cell.style.fontSize = "26px";
+    cell.style.fontWeight = "900";
+    cell.style.border = "3px solid #ccc";
+    cell.style.borderRadius = "10px";
+
+    if (isSold) {
+      cell.style.backgroundColor = "#ffebee";
+      cell.style.borderColor = "#d32f2f";
+      cell.style.color = "#d32f2f";
+      cell.style.textDecoration = "line-through";
+    } else {
+      cell.style.backgroundColor = "#ffffff";
+      cell.style.color = "#222222";
+    }
+    
+    exportGrid.appendChild(cell);
+  }
+
+  const container = document.getElementById("export-container");
+  container.style.display = "block";
+  container.style.left = "0";
+  container.style.zIndex = "-1";
+
+  const btn = document.getElementById("btn-descargar");
+  btn.textContent = "Generando...";
+  btn.disabled = true;
 
   try {
-    await DB.eliminarNumero(key);
-    showToast(`🗑 Número ${key} liberado`);
-    closeModal();
-  } catch (err) {
-    console.error(err);
-    showToast("❌ Error al eliminar");
+    const canvas = await html2canvas(container, { scale: 2, useCORS: true });
+    
+    const link = document.createElement("a");
+    link.download = `Rifa_Maza_${activo.inicio}-${activo.fin}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    showToast("✅ Imagen generada con éxito");
+  } catch (error) {
+    console.error(error);
+    showToast("❌ Error al generar imagen");
+  } finally {
+    container.style.left = "-9999px";
+    btn.textContent = "📸 Descargar Imagen";
+    btn.disabled = false;
   }
 }
 
-// ---- PRECIO ----
-export function showPriceModal() {
-  document.getElementById("input-precio").value = _state.precio || "";
-  document.getElementById("modal-precio").style.display = "block";
-  document.getElementById("modal-overlay").classList.add("active");
-}
-
-export async function guardarPrecio() {
-  const val = Number(document.getElementById("input-precio").value);
-  if (isNaN(val) || val < 0) { showToast("⚠️ Ingresá un precio válido"); return; }
-  try {
-    await DB.guardarPrecio(val);
-    _state.precio = val;
-    renderStats();
-    document.getElementById("modal-precio").style.display = "none";
-    document.getElementById("modal-overlay").classList.remove("active");
-    showToast("💰 Precio actualizado");
-  } catch (err) {
-    showToast("❌ Error al guardar precio");
-  }
-}
-
-// ---- PRINT ----
-export function printView() {
-  window.print();
-}
-
-// ---- TOAST ----
-export function showToast(msg) {
+function showToast(msg) {
   let toast = document.getElementById("toast");
   if (!toast) {
-    toast = document.createElement("div");
-    toast.id = "toast";
-    toast.className = "toast";
-    document.body.appendChild(toast);
+    toast = document.createElement("div"); toast.id = "toast";
+    toast.className = "toast"; document.body.appendChild(toast);
   }
-  toast.textContent = msg;
-  toast.classList.add("show");
+  toast.textContent = msg; toast.classList.add("show");
   setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
-// ---- SKELETON ----
-export function showSkeleton() {
-  const grid = document.getElementById("numbers-grid");
-  if (!grid) return;
-  grid.innerHTML = "";
-  for (let i = 0; i < 100; i++) {
-    const c = document.createElement("div");
-    c.className = "number-cell skeleton";
-    grid.appendChild(c);
-  }
-}
-
-// Exponer al HTML (onclick handlers en atributos)
-window.UI = { closeModal, guardarNumero, eliminarNumero, printView, showPriceModal, guardarPrecio };
+window.UI = { closeModal, guardarNumero, eliminarNumero, openTalonarioModal, guardarTalonario, editarRangoTalonario, actualizarRangoEditFin, guardarEdicionRango, eliminarTalonario, descargarImagen };
