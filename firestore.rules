@@ -1,0 +1,29 @@
+// firestore.rules
+// ============================================================
+//  Reglas de seguridad de Firestore
+//  Publicar estas reglas desde Firebase Console >
+//  Firestore > Reglas
+// ============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Números de la rifa: lectura pública, escritura solo si
+    // el documento tiene los campos mínimos requeridos.
+    match /numeros/{numero} {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasAll(['nombre', 'pago'])
+                   && request.resource.data.nombre is string
+                   && request.resource.data.nombre.size() > 0
+                   && request.resource.data.pago in ['efectivo', 'transferencia'];
+      allow delete: if true;
+    }
+
+    // Configuración (precio, etc.)
+    match /config/{doc} {
+      allow read:  if true;
+      allow write: if request.resource.data.precioPorNumero is number;
+    }
+  }
+}

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Rifa - Cirugía Raul Walter Maza</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <!-- Variables de entorno desde Vercel -->
+  <script src="/api/env"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-badge">🎟️ RIFA SOLIDARIA</div>
+      <h1 class="site-title">Rifa para solventar gastos de cirugía de<br><span class="highlight">Raul Walter Maza</span></h1>
+      <div class="stats-bar">
+        <div class="stat">
+          <span class="stat-number" id="stat-vendidos">0</span>
+          <span class="stat-label">Vendidos</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-number" id="stat-disponibles">100</span>
+          <span class="stat-label">Disponibles</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-number" id="stat-recaudado">$0</span>
+          <span class="stat-label">Recaudado</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- PROGRESS BAR -->
+  <div class="progress-wrap">
+    <div class="progress-bar" id="progress-bar"></div>
+    <span class="progress-label" id="progress-label">0% completado</span>
+  </div>
+
+  <!-- GRID -->
+  <main class="main-content">
+    <div class="legend">
+      <span class="legend-item"><span class="dot dot-available"></span>Disponible</span>
+      <span class="legend-item"><span class="dot dot-sold"></span>Vendido</span>
+    </div>
+    <div class="numbers-grid" id="numbers-grid"></div>
+  </main>
+
+  <!-- ACTIONS -->
+  <div class="actions-bar">
+    <button class="btn btn-print" onclick="UI.printView()">🖨️ Ver / Imprimir</button>
+    <button class="btn btn-secondary" onclick="UI.showPriceModal()">💰 Precio del número</button>
+  </div>
+
+  <!-- TOOLTIP -->
+  <div class="tooltip" id="tooltip"></div>
+
+  <!-- MODAL: REGISTRO / EDICIÓN -->
+  <div class="modal-overlay" id="modal-overlay" onclick="UI.closeModal()"></div>
+  <div class="modal" id="modal-form">
+    <button class="modal-close" onclick="UI.closeModal()">✕</button>
+    <h2 class="modal-title" id="modal-title">Registrar número</h2>
+    <p class="modal-number-badge" id="modal-number-badge">#001</p>
+
+    <div class="form-group">
+      <label class="form-label">Nombre y Apellido *</label>
+      <input type="text" id="input-nombre" class="form-input" placeholder="Ej: Juan Pérez" autocomplete="off" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Forma de pago *</label>
+      <div class="payment-options">
+        <label class="payment-opt">
+          <input type="radio" name="pago" value="efectivo" id="pago-efectivo" />
+          <span class="payment-label">💵 Efectivo</span>
+        </label>
+        <label class="payment-opt">
+          <input type="radio" name="pago" value="transferencia" id="pago-transfer" />
+          <span class="payment-label">📲 Transferencia</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Teléfono (opcional)</label>
+      <input type="tel" id="input-telefono" class="form-input" placeholder="Ej: 11-2345-6789" />
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="btn-guardar" onclick="UI.guardarNumero()">✓ Guardar</button>
+      <button class="btn btn-danger" id="btn-eliminar" onclick="UI.eliminarNumero()" style="display:none">🗑 Eliminar</button>
+    </div>
+  </div>
+
+  <!-- MODAL: PRECIO -->
+  <div class="modal" id="modal-precio" style="display:none">
+    <button class="modal-close" onclick="document.getElementById('modal-precio').style.display='none'; document.getElementById('modal-overlay').classList.remove('active')">✕</button>
+    <h2 class="modal-title">💰 Precio por número</h2>
+    <div class="form-group">
+      <label class="form-label">Valor de cada número ($)</label>
+      <input type="number" id="input-precio" class="form-input" placeholder="Ej: 1000" min="0" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="UI.guardarPrecio()">Guardar precio</button>
+    </div>
+  </div>
+
+  <!-- FIREBASE -->
+  <script type="module" src="js/firebase-config.js"></script>
+  <script type="module" src="js/db.js"></script>
+  <script type="module" src="js/ui.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

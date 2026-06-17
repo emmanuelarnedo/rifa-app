@@ -1,0 +1,17 @@
+# Credenciales y configuración local
+.env
+.env.local
+.env*.local
+
+# Si usás credenciales locales en firebase-config.js,
+# podés agregar esta línea (pero asegurate de que el archivo
+# tenga LOCAL_CONFIG vacío antes de commitear):
+# js/firebase-config.js
+
+# Node
+node_modules/
+.vercel/
+
+# OS
+.DS_Store
+Thumbs.db
