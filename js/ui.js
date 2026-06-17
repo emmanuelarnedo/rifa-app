@@ -102,13 +102,17 @@ function renderGrid() {
 
 // ---- TOGGLE DATOS BANCARIOS ----
 export function toggleBankFieldsNuevo() {
-  const isOtros = document.querySelector('input[name="banco_tipo_nuevo"]:checked').value === "otros";
-  document.getElementById("custom-bank-fields-nuevo").style.display = isOtros ? "block" : "none";
+  const tipo = document.querySelector('input[name="banco_tipo_nuevo"]:checked').value;
+  document.getElementById("custom-bank-fields-nuevo").style.display = (tipo === "otros") ? "block" : "none";
+  // Ocultar campo de teléfono si se elige omitir bancarios
+  document.getElementById("group-telefono-nuevo").style.display = (tipo === "omitir") ? "none" : "block";
 }
 
 export function toggleBankFieldsEdit() {
-  const isOtros = document.querySelector('input[name="banco_tipo_edit"]:checked').value === "otros";
-  document.getElementById("custom-bank-fields-edit").style.display = isOtros ? "block" : "none";
+  const tipo = document.querySelector('input[name="banco_tipo_edit"]:checked').value;
+  document.getElementById("custom-bank-fields-edit").style.display = (tipo === "otros") ? "block" : "none";
+  // Ocultar campo de teléfono si se elige omitir bancarios
+  document.getElementById("group-telefono-edit").style.display = (tipo === "omitir") ? "none" : "block";
 }
 
 // ---- LOGICA DE TALONARIOS (AUTO Y EDICION) ----
@@ -131,10 +135,14 @@ export async function guardarTalonario() {
   const encargado = document.getElementById("input-encargado").value.trim();
   if (!encargado) { showToast("⚠️ Ingresa el nombre del encargado"); return; }
 
-  const telefonoEncargado = document.getElementById("input-telefono-encargado").value.trim();
-  if (!telefonoEncargado) { showToast("⚠️ Ingresa tu número de WhatsApp"); return; }
-
   const bancoTipo = document.querySelector('input[name="banco_tipo_nuevo"]:checked').value;
+  const telefonoEncargado = document.getElementById("input-telefono-encargado").value.trim();
+  
+  if (bancoTipo !== "omitir" && !telefonoEncargado) { 
+    showToast("⚠️ Ingresa tu número de WhatsApp"); 
+    return; 
+  }
+
   let banco = { tipo: bancoTipo };
   if (bancoTipo === "otros") {
     banco.idTipo = document.querySelector('input[name="banco_id_tipo_nuevo"]:checked').value;
@@ -206,8 +214,13 @@ export async function guardarEdicionRango() {
   const encargado = document.getElementById("input-edit-encargado").value.trim();
   if (!encargado) { showToast("⚠️ Ingresa el nombre del encargado"); return; }
 
+  const bancoTipo = document.querySelector('input[name="banco_tipo_edit"]:checked').value;
   const telefonoEncargado = document.getElementById("input-edit-telefono-encargado").value.trim();
-  if (!telefonoEncargado) { showToast("⚠️ Ingresa tu número de WhatsApp"); return; }
+  
+  if (bancoTipo !== "omitir" && !telefonoEncargado) { 
+    showToast("⚠️ Ingresa tu número de WhatsApp"); 
+    return; 
+  }
 
   const inicio = Number(document.getElementById("input-edit-inicio").value);
   if (isNaN(inicio) || inicio < 1) { showToast("⚠️ Número de inicio inválido"); return; }
@@ -229,7 +242,6 @@ export async function guardarEdicionRango() {
     return;
   }
 
-  const bancoTipo = document.querySelector('input[name="banco_tipo_edit"]:checked').value;
   let banco = { tipo: bancoTipo };
   if (bancoTipo === "otros") {
     banco.idTipo = document.querySelector('input[name="banco_id_tipo_edit"]:checked').value;
@@ -326,36 +338,47 @@ export async function descargarImagen() {
   const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
   if (!activo) { showToast("⚠️ No hay talonario activo"); return; }
 
+  const exportBancoContainer = document.getElementById("export-banco-container");
+  const exportComprobanteContainer = document.getElementById("export-comprobante-container");
+  
   const exportId = document.getElementById("export-banco-id");
   const exportCbu = document.getElementById("export-banco-cbu");
   const exportNombre = document.getElementById("export-banco-nombre");
   const exportTitular = document.getElementById("export-banco-titular");
   const exportTelefono = document.getElementById("export-telefono");
 
-  // Inyectar SIEMPRE el teléfono del encargado en el flyer
-  exportTelefono.textContent = activo.telefonoEncargado || "No registrado";
+  exportTelefono.textContent = activo.telefonoEncargado || "";
 
   const banco = activo.banco || { tipo: "celeste" };
   
-  if (banco.tipo === "celeste") {
-    exportId.innerHTML = "<strong>Alias:</strong> CELESTEMAZA.UALA";
-    exportId.style.display = "block";
-    exportCbu.innerHTML = "<strong>CBU/CVU:</strong> 34802000003065968";
-    exportCbu.style.display = "block";
-    exportNombre.innerHTML = "<strong>Banco:</strong> Ualá Bank S.A.U";
-    exportTitular.innerHTML = "<strong>Titular:</strong> Celeste Abigail Maza";
+  // Ocultar todo si seleccionó omitir
+  if (banco.tipo === "omitir") {
+    exportBancoContainer.style.display = "none";
+    exportComprobanteContainer.style.display = "none";
   } else {
-    if (banco.idTipo === "alias") {
-      exportId.innerHTML = `<strong>Alias:</strong> ${banco.idValor}`;
+    exportBancoContainer.style.display = "block";
+    exportComprobanteContainer.style.display = "block";
+
+    if (banco.tipo === "celeste") {
+      exportId.innerHTML = "<strong>Alias:</strong> CELESTEMAZA.UALA";
       exportId.style.display = "block";
-      exportCbu.style.display = "none";
-    } else {
-      exportCbu.innerHTML = `<strong>CBU/CVU:</strong> ${banco.idValor}`;
+      exportCbu.innerHTML = "<strong>CBU/CVU:</strong> 34802000003065968";
       exportCbu.style.display = "block";
-      exportId.style.display = "none";
+      exportNombre.innerHTML = "<strong>Banco:</strong> Ualá Bank S.A.U";
+      exportTitular.innerHTML = "<strong>Titular:</strong> Celeste Abigail Maza";
+    } else if (banco.tipo === "otros") {
+      if (banco.idTipo === "alias") {
+        exportId.innerHTML = `<strong>Alias:</strong> ${banco.idValor}`;
+        exportId.style.display = "block";
+        exportCbu.style.display = "none";
+      } else {
+        exportCbu.innerHTML = `<strong>CBU/CVU:</strong> ${banco.idValor}`;
+        exportCbu.style.display = "block";
+        exportId.style.display = "none";
+      }
+      exportNombre.innerHTML = `<strong>Banco:</strong> ${banco.nombre}`;
+      exportTitular.innerHTML = `<strong>Titular:</strong> ${banco.titular}`;
     }
-    exportNombre.innerHTML = `<strong>Banco:</strong> ${banco.nombre}`;
-    exportTitular.innerHTML = `<strong>Titular:</strong> ${banco.titular}`;
   }
 
   const exportGrid = document.getElementById("export-grid");
