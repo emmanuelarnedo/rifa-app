@@ -153,6 +153,11 @@ export async function guardarEdicionRango() {
   const inicio = Number(document.getElementById("input-edit-inicio").value);
   if (isNaN(inicio) || inicio < 1) { showToast("⚠️ Número de inicio inválido"); return; }
   
+  if (inicio % 10 !== 1) {
+    showToast("⚠️ El número debe terminar en 1 (ej: 1, 101, 301)");
+    return;
+  }
+  
   const fin = inicio + 99;
 
   const solapa = _state.talonarios.some(t => {
