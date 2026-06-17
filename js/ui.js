@@ -154,7 +154,7 @@ export async function guardarEdicionRango() {
   if (isNaN(inicio) || inicio < 1) { showToast("⚠️ Número de inicio inválido"); return; }
   
   if (inicio % 10 !== 1) {
-    showToast("⚠️ El número debe terminar en 1 (ej: 1, 101, 301)");
+    showToast("⚠️ El número de inicio debe terminar en 1 (ej: 1, 101, 301)");
     return;
   }
   
