@@ -114,8 +114,8 @@ export function toggleBankFieldsEdit() {
 // ---- LOGICA DE TALONARIOS (AUTO Y EDICION) ----
 export function openTalonarioModal() {
   document.getElementById("input-encargado").value = "";
+  document.getElementById("input-telefono-encargado").value = "";
   
-  // Reseteamos datos bancarios
   document.querySelector('input[name="banco_tipo_nuevo"][value="celeste"]').checked = true;
   document.querySelector('input[name="banco_id_tipo_nuevo"][value="alias"]').checked = true;
   document.getElementById("input-banco-id-nuevo").value = "";
@@ -129,9 +129,11 @@ export function openTalonarioModal() {
 
 export async function guardarTalonario() {
   const encargado = document.getElementById("input-encargado").value.trim();
-  if (!encargado) { showToast("⚠️ Ingresa el encargado"); return; }
+  if (!encargado) { showToast("⚠️ Ingresa el nombre del encargado"); return; }
 
-  // Capturar datos bancarios
+  const telefonoEncargado = document.getElementById("input-telefono-encargado").value.trim();
+  if (!telefonoEncargado) { showToast("⚠️ Ingresa tu número de WhatsApp"); return; }
+
   const bancoTipo = document.querySelector('input[name="banco_tipo_nuevo"]:checked').value;
   let banco = { tipo: bancoTipo };
   if (bancoTipo === "otros") {
@@ -146,7 +148,6 @@ export async function guardarTalonario() {
     }
   }
 
-  // Asignación automática inteligente
   let nextInicio = 1;
   while (true) {
     const testFin = nextInicio + 99;
@@ -157,7 +158,7 @@ export async function guardarTalonario() {
   const fin = nextInicio + 99;
 
   try {
-    await DB.guardarTalonario({ encargado, inicio: nextInicio, fin, banco });
+    await DB.guardarTalonario({ encargado, telefonoEncargado, inicio: nextInicio, fin, banco });
     showToast(`✅ Talonario creado (${nextInicio} al ${fin})`);
     closeModal();
   } catch (err) {
@@ -170,12 +171,11 @@ export function editarRangoTalonario() {
   const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
   if(!activo) return;
 
-  // Cargar datos actuales
   document.getElementById("input-edit-encargado").value = activo.encargado;
+  document.getElementById("input-edit-telefono-encargado").value = activo.telefonoEncargado || "";
   document.getElementById("input-edit-inicio").value = activo.inicio;
   document.getElementById("input-edit-fin").value = activo.fin;
 
-  // Cargar datos bancarios
   const banco = activo.banco || { tipo: "celeste" };
   document.querySelector(`input[name="banco_tipo_edit"][value="${banco.tipo}"]`).checked = true;
   if (banco.tipo === "otros") {
@@ -206,6 +206,9 @@ export async function guardarEdicionRango() {
   const encargado = document.getElementById("input-edit-encargado").value.trim();
   if (!encargado) { showToast("⚠️ Ingresa el nombre del encargado"); return; }
 
+  const telefonoEncargado = document.getElementById("input-edit-telefono-encargado").value.trim();
+  if (!telefonoEncargado) { showToast("⚠️ Ingresa tu número de WhatsApp"); return; }
+
   const inicio = Number(document.getElementById("input-edit-inicio").value);
   if (isNaN(inicio) || inicio < 1) { showToast("⚠️ Número de inicio inválido"); return; }
   
@@ -226,7 +229,6 @@ export async function guardarEdicionRango() {
     return;
   }
 
-  // Capturar datos bancarios modificados
   const bancoTipo = document.querySelector('input[name="banco_tipo_edit"]:checked').value;
   let banco = { tipo: bancoTipo };
   if (bancoTipo === "otros") {
@@ -245,7 +247,7 @@ export async function guardarEdicionRango() {
   btn.disabled = true; btn.textContent = "Guardando...";
 
   try {
-    await DB.actualizarTalonario(activo.id, { encargado, inicio, fin, banco });
+    await DB.actualizarTalonario(activo.id, { encargado, telefonoEncargado, inicio, fin, banco });
     showToast(`✅ Talonario actualizado`);
     closeModal();
   } catch(err) {
@@ -324,11 +326,14 @@ export async function descargarImagen() {
   const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
   if (!activo) { showToast("⚠️ No hay talonario activo"); return; }
 
-  // Modificar los datos bancarios del flyer
   const exportId = document.getElementById("export-banco-id");
   const exportCbu = document.getElementById("export-banco-cbu");
   const exportNombre = document.getElementById("export-banco-nombre");
   const exportTitular = document.getElementById("export-banco-titular");
+  const exportTelefono = document.getElementById("export-telefono");
+
+  // Inyectar SIEMPRE el teléfono del encargado en el flyer
+  exportTelefono.textContent = activo.telefonoEncargado || "No registrado";
 
   const banco = activo.banco || { tipo: "celeste" };
   
@@ -353,7 +358,6 @@ export async function descargarImagen() {
     exportTitular.innerHTML = `<strong>Titular:</strong> ${banco.titular}`;
   }
 
-  // Cargar grilla
   const exportGrid = document.getElementById("export-grid");
   exportGrid.innerHTML = "";
 

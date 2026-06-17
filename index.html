@@ -12,13 +12,11 @@
 </head>
 <body>
 
-  <!-- HEADER -->
   <header class="site-header">
     <div class="header-inner">
       <div class="header-badge">🎟️ RIFA SOLIDARIA</div>
       <h1 class="site-title">Rifa para solventar gastos de cirugía de<br><span class="highlight">Raul Walter Maza</span></h1>
       
-      <!-- STATS BAR -->
       <div class="stats-bar">
         <div class="stat">
           <span class="stat-number" id="stat-vendidos">0</span>
@@ -38,13 +36,11 @@
     </div>
   </header>
 
-  <!-- NAVEGACIÓN DE TALONARIOS -->
   <nav class="talonarios-nav">
     <div class="talonarios-list" id="talonarios-list"></div>
     <button class="btn-nuevo-talonario" onclick="UI.openTalonarioModal()">+ Nuevo Talonario</button>
   </nav>
 
-  <!-- MAIN GRID -->
   <main class="main-content">
     <div class="talonario-info">
       <div style="display: flex; align-items: center; gap: 10px;">
@@ -59,15 +55,12 @@
     <div class="numbers-grid" id="numbers-grid"></div>
   </main>
 
-  <!-- ACTIONS -->
   <div class="actions-bar">
     <button class="btn btn-print" id="btn-descargar" onclick="UI.descargarImagen()">📸 Descargar Imagen</button>
   </div>
 
-  <!-- TOOLTIP -->
   <div class="tooltip" id="tooltip"></div>
 
-  <!-- MODAL: REGISTRAR VENTA -->
   <div class="modal-overlay" id="modal-overlay" onclick="UI.closeModal()"></div>
   <div class="modal" id="modal-form">
     <button class="modal-close" onclick="UI.closeModal()">✕</button>
@@ -104,7 +97,6 @@
     </div>
   </div>
 
-  <!-- MODAL: NUEVO TALONARIO -->
   <div class="modal" id="modal-talonario">
     <button class="modal-close" onclick="UI.closeModal()">✕</button>
     <h2 class="modal-title">Nuevo Talonario</h2>
@@ -113,6 +105,11 @@
     <div class="form-group">
       <label class="form-label">Nombre del encargado *</label>
       <input type="text" id="input-encargado" class="form-input" placeholder="Ej: Tía María" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Tu número de WhatsApp (para recibir comprobantes) *</label>
+      <input type="tel" id="input-telefono-encargado" class="form-input" placeholder="Ej: 3865-123456" />
     </div>
 
     <div class="form-group">
@@ -151,7 +148,6 @@
     </div>
   </div>
 
-  <!-- MODAL: EDITAR TALONARIO -->
   <div class="modal" id="modal-editar">
     <button class="modal-close" onclick="UI.closeModal()">✕</button>
     <h2 class="modal-title">Editar Talonario</h2>
@@ -160,6 +156,11 @@
     <div class="form-group">
       <label class="form-label">Nombre del encargado</label>
       <input type="text" id="input-edit-encargado" class="form-input" placeholder="Ej: Tía María" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Tu número de WhatsApp (para recibir comprobantes)</label>
+      <input type="tel" id="input-edit-telefono-encargado" class="form-input" placeholder="Ej: 3865-123456" />
     </div>
 
     <div class="form-group">
@@ -209,7 +210,6 @@
     </div>
   </div>
 
-  <!-- CONTENEDOR OCULTO PARA EXPORTAR COMO IMAGEN (Versión Redes Sociales) -->
   <div id="export-container" style="position: absolute; left: -9999px; top: 0; width: 1080px; background: linear-gradient(135deg, #FFEFBA 0%, #FFFFFF 100%); padding: 60px; font-family: 'Inter', sans-serif; color: #333;">
     
     <div style="background: #ffffff; border-radius: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); padding: 50px; border: 5px solid #F5A623; position: relative; overflow: hidden;">
@@ -225,7 +225,6 @@
       
       <div style="display: flex; gap: 30px; margin-bottom: 30px;">
         
-        <!-- Info de Pago Dinámica -->
         <div style="flex: 1; background: #FFF3E0; border: 4px dashed #F5A623; padding: 35px; border-radius: 24px; color: #4E342E;">
           <p style="font-size: 36px; font-weight: 900; color: #D84315; margin: 0 0 25px 0; text-align: center; border-bottom: 2px dashed #F5A623; padding-bottom: 20px;">Valor: $3.000</p>
           <div style="font-size: 21px; line-height: 1.6;">
@@ -236,7 +235,7 @@
           </div>
           <div style="margin-top: 25px; background: #ffffff; border: 2px dashed #F5A623; padding: 15px; border-radius: 16px; text-align: center;">
             <p style="font-size: 18px; margin: 0 0 5px 0; color: #4E342E;">📲 Enviar comprobante al:</p>
-            <p style="font-size: 28px; font-weight: bold; color: #D84315; margin: 0;">3865-636557</p>
+            <p style="font-size: 28px; font-weight: bold; color: #D84315; margin: 0;" id="export-telefono">3865-636557</p>
           </div>
         </div>
         
