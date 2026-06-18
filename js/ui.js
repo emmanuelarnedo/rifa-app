@@ -19,11 +19,18 @@ export function updateNumeros(data) {
 
 export function updateTalonarios(data) {
   _state.talonarios = data;
-  if (!_state.talonarioActivoId && data.length > 0) {
-    _state.talonarioActivoId = data[0].id;
-  } else if (data.length === 0) {
-    _state.talonarioActivoId = null;
+  
+  // SOLUCIÓN: Verificamos si el talonario activo sigue existiendo en la nueva lista
+  const activoExiste = data.some(t => t.id === _state.talonarioActivoId);
+  
+  if (!activoExiste) {
+    if (data.length > 0) {
+      _state.talonarioActivoId = data[0].id; // Salta al primer talonario que encuentre
+    } else {
+      _state.talonarioActivoId = null; // Si no queda ninguno, deja todo en nulo
+    }
   }
+  
   renderTabs();
   renderStats();
   renderGrid();
@@ -100,13 +107,11 @@ function renderGrid() {
 export function toggleBankFieldsNuevo() {
   const tipo = document.querySelector('input[name="banco_tipo_nuevo"]:checked').value;
   document.getElementById("custom-bank-fields-nuevo").style.display = (tipo === "otros") ? "block" : "none";
-  // Ya no ocultamos el teléfono
 }
 
 export function toggleBankFieldsEdit() {
   const tipo = document.querySelector('input[name="banco_tipo_edit"]:checked').value;
   document.getElementById("custom-bank-fields-edit").style.display = (tipo === "otros") ? "block" : "none";
-  // Ya no ocultamos el teléfono
 }
 
 export function openTalonarioModal() {
@@ -129,7 +134,6 @@ export async function guardarTalonario() {
   if (!encargado) { showToast("⚠️ Ingresa el nombre del encargado"); return; }
 
   const bancoTipo = document.querySelector('input[name="banco_tipo_nuevo"]:checked').value;
-  // El teléfono ahora es opcional
   const telefonoEncargado = document.getElementById("input-telefono-encargado").value.trim();
   
   let banco = { tipo: bancoTipo };
@@ -208,7 +212,6 @@ export async function guardarEdicionRango() {
   if (!encargado) { showToast("⚠️ Ingresa el nombre del encargado"); return; }
 
   const bancoTipo = document.querySelector('input[name="banco_tipo_edit"]:checked').value;
-  // El teléfono ahora es opcional
   const telefonoEncargado = document.getElementById("input-edit-telefono-encargado").value.trim();
 
   const inicio = Number(document.getElementById("input-edit-inicio").value);
@@ -272,7 +275,7 @@ export async function confirmarSolicitudBorrado() {
 
   try {
     await DB.solicitarBorrado(activo.id, motivo);
-    _state.talonarioActivoId = null;
+    // Ya no lo seteamos null aquí, dejamos que la recarga de Firebase (onSnapshot) haga el trabajo
     showToast(`✅ Solicitud enviada con éxito`);
     closeModal();
   } catch(err) {
