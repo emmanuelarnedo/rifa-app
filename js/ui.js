@@ -20,14 +20,13 @@ export function updateNumeros(data) {
 export function updateTalonarios(data) {
   _state.talonarios = data;
   
-  // SOLUCIÓN: Verificamos si el talonario activo sigue existiendo en la nueva lista
   const activoExiste = data.some(t => t.id === _state.talonarioActivoId);
   
   if (!activoExiste) {
     if (data.length > 0) {
-      _state.talonarioActivoId = data[0].id; // Salta al primer talonario que encuentre
+      _state.talonarioActivoId = data[0].id;
     } else {
-      _state.talonarioActivoId = null; // Si no queda ninguno, deja todo en nulo
+      _state.talonarioActivoId = null;
     }
   }
   
@@ -275,9 +274,14 @@ export async function confirmarSolicitudBorrado() {
 
   try {
     await DB.solicitarBorrado(activo.id, motivo);
-    // Ya no lo seteamos null aquí, dejamos que la recarga de Firebase (onSnapshot) haga el trabajo
     showToast(`✅ Solicitud enviada con éxito`);
     closeModal();
+    
+    // Recarga la página después de 1.5 segundos
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+
   } catch(err) {
     showToast("❌ Error al enviar la solicitud");
   }
