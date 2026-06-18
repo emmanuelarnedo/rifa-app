@@ -126,7 +126,7 @@
     </div>
 
     <div class="form-group" id="group-telefono-nuevo">
-      <label class="form-label">Tu número de WhatsApp (para recibir comprobantes) *</label>
+      <label class="form-label">Tu número de WhatsApp (Opcional)</label>
       <input type="tel" id="input-telefono-encargado" class="form-input" placeholder="Ej: 3865-123456" />
     </div>
 
@@ -191,7 +191,7 @@
     </div>
 
     <div class="form-group" id="group-telefono-edit">
-      <label class="form-label">Tu número de WhatsApp (para recibir comprobantes)</label>
+      <label class="form-label">Tu número de WhatsApp (Opcional)</label>
       <input type="tel" id="input-edit-telefono-encargado" class="form-input" placeholder="Ej: 3865-123456" />
     </div>
 
@@ -212,7 +212,13 @@
        <input type="text" id="input-banco-titular-edit" class="form-input" placeholder="Nombre del Titular" />
     </div>
 
-    <div class="modal-actions">
+    <div id="delete-reason-container" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--color-border);">
+       <label class="form-label" style="color: var(--color-danger);">Motivo de eliminación (Obligatorio) *</label>
+       <textarea id="input-motivo-borrado" class="form-input" rows="2" placeholder="Ej: Me equivoqué al ingresar mis datos bancarios..." style="resize: none;"></textarea>
+       <button class="btn btn-danger" style="width: 100%; margin-top: 10px;" onclick="UI.confirmarSolicitudBorrado()">Enviar solicitud de borrado</button>
+    </div>
+
+    <div class="modal-actions" id="modal-actions-edit">
       <button class="btn btn-primary" id="btn-guardar-edicion" onclick="UI.guardarEdicionRango()">Guardar Cambios</button>
       <button class="btn btn-danger" onclick="UI.eliminarTalonario()">🗑 Eliminar talonario</button>
     </div>

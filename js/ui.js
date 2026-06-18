@@ -29,7 +29,6 @@ export function updateTalonarios(data) {
   renderGrid();
 }
 
-// ---- STATS POR TALONARIO ----
 function renderStats() {
   const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
   let vendidos = 0, efectivo = 0, transferencia = 0;
@@ -51,7 +50,6 @@ function renderStats() {
   document.getElementById("stat-transfer").textContent = `$${transferencia.toLocaleString("es-AR")}`;
 }
 
-// ---- TABS ----
 function renderTabs() {
   const container = document.getElementById("talonarios-list");
   container.innerHTML = "";
@@ -67,14 +65,13 @@ function renderTabs() {
   });
 }
 
-// ---- GRID ----
 function renderGrid() {
   const grid = document.getElementById("numbers-grid");
   const titulo = document.getElementById("talonario-activo-titulo");
   const btnEditar = document.getElementById("btn-editar-rango");
   
   if (_state.talonarios.length === 0) {
-    grid.innerHTML = "<p style='grid-column: span 10; text-align: center; padding: 20px;'>No hay talonarios creados. Agrega uno para comenzar.</p>";
+    grid.innerHTML = "<p style='grid-column: span 10; text-align: center; padding: 20px;'>No hay talonarios activos.</p>";
     titulo.textContent = "Sin talonarios";
     btnEditar.style.display = "none";
     return;
@@ -100,22 +97,18 @@ function renderGrid() {
   }
 }
 
-// ---- TOGGLE DATOS BANCARIOS ----
 export function toggleBankFieldsNuevo() {
   const tipo = document.querySelector('input[name="banco_tipo_nuevo"]:checked').value;
   document.getElementById("custom-bank-fields-nuevo").style.display = (tipo === "otros") ? "block" : "none";
-  // Ocultar campo de teléfono si se elige omitir bancarios
-  document.getElementById("group-telefono-nuevo").style.display = (tipo === "omitir") ? "none" : "block";
+  // Ya no ocultamos el teléfono
 }
 
 export function toggleBankFieldsEdit() {
   const tipo = document.querySelector('input[name="banco_tipo_edit"]:checked').value;
   document.getElementById("custom-bank-fields-edit").style.display = (tipo === "otros") ? "block" : "none";
-  // Ocultar campo de teléfono si se elige omitir bancarios
-  document.getElementById("group-telefono-edit").style.display = (tipo === "omitir") ? "none" : "block";
+  // Ya no ocultamos el teléfono
 }
 
-// ---- LOGICA DE TALONARIOS (AUTO Y EDICION) ----
 export function openTalonarioModal() {
   document.getElementById("input-encargado").value = "";
   document.getElementById("input-telefono-encargado").value = "";
@@ -136,13 +129,9 @@ export async function guardarTalonario() {
   if (!encargado) { showToast("⚠️ Ingresa el nombre del encargado"); return; }
 
   const bancoTipo = document.querySelector('input[name="banco_tipo_nuevo"]:checked').value;
+  // El teléfono ahora es opcional
   const telefonoEncargado = document.getElementById("input-telefono-encargado").value.trim();
   
-  if (bancoTipo !== "omitir" && !telefonoEncargado) { 
-    showToast("⚠️ Ingresa tu número de WhatsApp"); 
-    return; 
-  }
-
   let banco = { tipo: bancoTipo };
   if (bancoTipo === "otros") {
     banco.idTipo = document.querySelector('input[name="banco_id_tipo_nuevo"]:checked').value;
@@ -194,6 +183,10 @@ export function editarRangoTalonario() {
   }
   toggleBankFieldsEdit();
 
+  document.getElementById("delete-reason-container").style.display = "none";
+  document.getElementById("modal-actions-edit").style.display = "flex";
+  document.getElementById("input-motivo-borrado").value = "";
+
   document.getElementById("modal-overlay").classList.add("active");
   document.getElementById("modal-editar").classList.add("active");
 }
@@ -215,12 +208,8 @@ export async function guardarEdicionRango() {
   if (!encargado) { showToast("⚠️ Ingresa el nombre del encargado"); return; }
 
   const bancoTipo = document.querySelector('input[name="banco_tipo_edit"]:checked').value;
+  // El teléfono ahora es opcional
   const telefonoEncargado = document.getElementById("input-edit-telefono-encargado").value.trim();
-  
-  if (bancoTipo !== "omitir" && !telefonoEncargado) { 
-    showToast("⚠️ Ingresa tu número de WhatsApp"); 
-    return; 
-  }
 
   const inicio = Number(document.getElementById("input-edit-inicio").value);
   if (isNaN(inicio) || inicio < 1) { showToast("⚠️ Número de inicio inválido"); return; }
@@ -269,23 +258,28 @@ export async function guardarEdicionRango() {
   }
 }
 
-export async function eliminarTalonario() {
+export function eliminarTalonario() {
+  document.getElementById("modal-actions-edit").style.display = "none";
+  document.getElementById("delete-reason-container").style.display = "block";
+}
+
+export async function confirmarSolicitudBorrado() {
   const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
   if(!activo) return;
 
-  if (!confirm(`¿Estás seguro de eliminar el talonario de ${activo.encargado}?`)) return;
+  const motivo = document.getElementById("input-motivo-borrado").value.trim();
+  if (!motivo) { showToast("⚠️ Debes ingresar un motivo de eliminación"); return; }
 
   try {
-    await DB.eliminarTalonario(activo.id);
+    await DB.solicitarBorrado(activo.id, motivo);
     _state.talonarioActivoId = null;
-    showToast(`🗑 Talonario eliminado`);
+    showToast(`✅ Solicitud enviada con éxito`);
     closeModal();
   } catch(err) {
-    showToast("❌ Error al eliminar talonario");
+    showToast("❌ Error al enviar la solicitud");
   }
 }
 
-// ---- MODAL NÚMERO ----
 function openModal(key) {
   const data = _state.numeros[key];
   const isSold = !!data;
@@ -333,7 +327,6 @@ export async function eliminarNumero() {
   catch (err) { showToast("❌ Error al eliminar"); }
 }
 
-// ---- DESCARGAR IMAGEN (HTML2CANVAS) ----
 export async function descargarImagen() {
   const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
   if (!activo) { showToast("⚠️ No hay talonario activo"); return; }
@@ -351,7 +344,6 @@ export async function descargarImagen() {
 
   const banco = activo.banco || { tipo: "celeste" };
   
-  // Ocultar todo si seleccionó omitir
   if (banco.tipo === "omitir") {
     exportBancoContainer.style.display = "none";
     exportComprobanteContainer.style.display = "none";
@@ -453,5 +445,5 @@ window.UI = {
   closeModal, guardarNumero, eliminarNumero, openTalonarioModal, 
   guardarTalonario, editarRangoTalonario, actualizarRangoEditFin, 
   guardarEdicionRango, eliminarTalonario, descargarImagen,
-  toggleBankFieldsNuevo, toggleBankFieldsEdit 
+  toggleBankFieldsNuevo, toggleBankFieldsEdit, confirmarSolicitudBorrado
 };

@@ -24,7 +24,13 @@ export async function eliminarNumero(numero) {
 export function suscribirTalonarios(callback) {
   return onSnapshot(collection(db, COL_TALONARIOS), (snap) => {
     const list = [];
-    snap.forEach((d) => { list.push({ id: d.id, ...d.data() }); });
+    snap.forEach((d) => { 
+      const data = d.data();
+      // Ocultamos los talonarios que están pendientes de aprobación de borrado
+      if (!data.borradoPendiente) {
+        list.push({ id: d.id, ...data }); 
+      }
+    });
     list.sort((a, b) => a.inicio - b.inicio);
     callback(list);
   });
@@ -33,7 +39,7 @@ export function suscribirTalonarios(callback) {
 export async function guardarTalonario(payload) {
   const id = "tal_" + Date.now(); 
   const ref = doc(db, COL_TALONARIOS, id);
-  await setDoc(ref, { ...payload, creadoEn: Date.now() });
+  await setDoc(ref, { ...payload, creadoEn: Date.now(), borradoPendiente: false });
 }
 
 export async function actualizarTalonario(id, payload) {
@@ -41,6 +47,13 @@ export async function actualizarTalonario(id, payload) {
   await updateDoc(ref, payload);
 }
 
+// Nueva función de Soft Delete para los usuarios
+export async function solicitarBorrado(id, motivo) {
+  const ref = doc(db, COL_TALONARIOS, id);
+  await updateDoc(ref, { borradoPendiente: true, motivoBorrado: motivo });
+}
+
+// Esta se mantiene para que TÚ puedas borrar de forma definitiva desde tu panel admin
 export async function eliminarTalonario(id) {
   const ref = doc(db, COL_TALONARIOS, id);
   await deleteDoc(ref);
