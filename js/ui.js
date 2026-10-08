@@ -194,8 +194,8 @@ function renderGrid() {
 
 // ---- RIFA GLOBAL (CREAR/EDITAR Y MINI PREVIEW) ----
 export function actualizarMiniPreview() {
-  const tPrincipal = document.getElementById("rifa-titulo-principal").value || "Súper Rifa";
-  const motivo = document.getElementById("rifa-motivo").value || "Celina";
+  const tPrincipal = document.getElementById("rifa-titulo-principal").value || "GRAN RIFA";
+  const motivo = document.getElementById("rifa-motivo").value || "MOTIVO DE LA RIFA";
   const paletaSeleccionada = document.querySelector('input[name="rifa_paleta"]:checked').value;
   const c = PALETAS[paletaSeleccionada];
 
@@ -217,7 +217,7 @@ export function actualizarMiniPreview() {
 
 export function abrirModalCrearRifa() {
   document.getElementById("modal-rifa-titulo").textContent = "Nueva Rifa";
-  document.getElementById("rifa-titulo-principal").value = "SÚPER RIFA";
+  document.getElementById("rifa-titulo-principal").value = "";
   document.getElementById("rifa-motivo").value = "";
   document.getElementById("rifa-cantidad").value = "";
   document.getElementById("rifa-talonarios").value = "";
@@ -245,7 +245,7 @@ export function abrirModalCrearRifa() {
 export function abrirModalEditarRifa() {
   const r = _state.currentRifa;
   document.getElementById("modal-rifa-titulo").textContent = "Ajustes de la Rifa";
-  document.getElementById("rifa-titulo-principal").value = r.tituloPrincipal || "SÚPER RIFA";
+  document.getElementById("rifa-titulo-principal").value = r.tituloPrincipal || "";
   document.getElementById("rifa-motivo").value = r.motivo || "";
   document.getElementById("rifa-cantidad").value = r.cantidadNumeros;
   document.getElementById("rifa-talonarios").value = r.cantidadTalonarios;
@@ -310,7 +310,7 @@ export async function guardarRifa() {
   const precio = parseFloat(document.getElementById("rifa-precio").value);
   const password = document.getElementById("rifa-password").value.trim();
 
-  if(!motivo || isNaN(cantidadNumeros) || isNaN(cantidadTalonarios) || isNaN(precio) || !password) {
+  if(!tituloPrincipal || !motivo || isNaN(cantidadNumeros) || isNaN(cantidadTalonarios) || isNaN(precio) || !password) {
     showToast("⚠️ Completa todos los campos obligatorios (*)"); return;
   }
 
@@ -524,7 +524,7 @@ export async function previsualizarImagen() {
   document.getElementById("export-top-bar").style.background = `repeating-linear-gradient(45deg, ${c.primary}, ${c.primary} 20px, ${c.secondary} 20px, ${c.secondary} 40px)`;
   
   const spanTitulo = document.getElementById("export-titulo-principal");
-  spanTitulo.textContent = r.tituloPrincipal || "SÚPER RIFA";
+  spanTitulo.textContent = r.tituloPrincipal || "GRAN RIFA";
   spanTitulo.style.background = c.primary;
   
   const h1Motivo = document.getElementById("export-motivo");
