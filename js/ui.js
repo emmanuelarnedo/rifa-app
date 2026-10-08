@@ -623,7 +623,7 @@ export async function previsualizarImagen() {
     document.getElementById("modal-overlay").classList.add("active");
     document.getElementById("modal-preview").classList.add("active");
   } catch (error) { showToast("❌ Error al generar imagen"); } 
-  finally { baseExport.style.left = "-9999px"; btn.textContent = "👁️ Previsualizar Flyer del Talonario"; btn.disabled = false; }
+  finally { baseExport.style.left = "-9999px"; btn.textContent = "👁️ Previsualizar Imagen del Talonario"; btn.disabled = false; }
 }
 
 export function confirmarDescarga() {
