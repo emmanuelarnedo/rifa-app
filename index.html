@@ -15,7 +15,7 @@
   <div id="view-home">
     <header class="site-header" style="text-align: center; padding: 40px 20px;">
       <h1 class="highlight" style="font-size: 32px; margin-bottom: 10px;">🎟️ Gestor de Rifas</h1>
-      <p style="color: var(--color-text-muted);">Crea tu rifa, define los premios y lleva el control de tus ventas.</p>
+      <p style="color: var(--color-text-muted);">Crea tu rifa, divide los talonarios y lleva el control de tus ventas.</p>
       <button class="btn btn-primary" style="margin-top: 20px; padding: 12px 24px;" onclick="UI.abrirModalCrearRifa()">+ Crear Nueva Rifa</button>
     </header>
     <main class="main-content">
@@ -26,27 +26,37 @@
     </main>
   </div>
 
-  <!-- PANTALLA 2: GESTIÓN DE LA RIFA (Oculta por defecto) -->
+  <!-- PANTALLA 2: GESTIÓN DE LA RIFA Y TALONARIOS -->
   <div id="view-rifa" style="display: none;">
     <header class="site-header">
       <div class="header-inner">
-        <button class="btn-icon" style="margin-bottom: 15px; background: var(--color-surface-2); color: white;" onclick="UI.volverAlInicio()">← Volver al inicio</button>
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+           <button class="btn-icon" style="background: var(--color-surface-2); color: white;" onclick="UI.volverAlInicio()">← Volver</button>
+           <button class="btn-icon" style="background: transparent; color: var(--color-text-muted); border: 1px solid var(--color-border);" onclick="UI.abrirModalEditarRifa()">⚙️ Ajustes Rifa</button>
+        </div>
         <div class="header-badge">🎟️ RIFA ACTIVA</div>
         <h1 class="site-title" id="rifa-title-display">Cargando...</h1>
         
         <div class="stats-bar">
-          <div class="stat"><span class="stat-number" id="stat-vendidos">0</span><span class="stat-label">Vendidos</span></div>
+          <div class="stat"><span class="stat-number" id="stat-vendidos">0</span><span class="stat-label">Vendidos (Global)</span></div>
           <div class="stat-divider"></div>
-          <div class="stat"><span class="stat-number text-efectivo" id="stat-efectivo">$0</span><span class="stat-label">En Efectivo</span></div>
-          <div class="stat-divider"></div>
-          <div class="stat"><span class="stat-number text-transfer" id="stat-transfer">$0</span><span class="stat-label">En Transf.</span></div>
+          <div class="stat"><span class="stat-number text-efectivo" id="stat-efectivo">$0</span><span class="stat-label">Recaudación Total</span></div>
         </div>
       </div>
     </header>
 
+    <!-- NAVEGACIÓN DE TALONARIOS -->
+    <nav class="talonarios-nav">
+      <div class="talonarios-list" id="talonarios-list"></div>
+      <button class="btn-nuevo-talonario" onclick="UI.abrirModalTalonario()">+ Nuevo Talonario</button>
+    </nav>
+
     <main class="main-content">
       <div class="talonario-info">
-        <h3 id="rifa-rango-display">Total de números: 0</h3>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <h3 id="talonario-activo-titulo">Selecciona un talonario</h3>
+          <button id="btn-editar-talonario" class="btn-icon" style="display: none;" onclick="UI.abrirModalEditarTalonario()">✏️ Editar Vendedor</button>
+        </div>
         <div class="legend">
           <span class="legend-item"><span class="dot dot-available"></span>Libre</span>
           <span class="legend-item"><span class="dot dot-sold"></span>Vendido</span>
@@ -56,8 +66,7 @@
     </main>
 
     <div class="actions-bar">
-      <button class="btn btn-print" onclick="UI.abrirModalEditarRifa()">⚙️ Editar Rifa</button>
-      <button class="btn btn-primary" id="btn-descargar" onclick="UI.descargarImagen()">📸 Descargar Imagen</button>
+      <button class="btn btn-primary" id="btn-previsualizar" style="display:none;" onclick="UI.previsualizarImagen()">👁️ Previsualizar Flyer del Talonario</button>
     </div>
   </div>
 
@@ -67,7 +76,7 @@
   <div class="modal" id="modal-login">
     <button class="modal-close" onclick="UI.closeModal()">✕</button>
     <h2 class="modal-title">Ingresar a la rifa</h2>
-    <p style="font-size: 13px; color: var(--color-text-muted); margin-bottom: 15px;">Esta rifa está protegida. Ingresa la contraseña asignada por el creador.</p>
+    <p style="font-size: 13px; color: var(--color-text-muted); margin-bottom: 15px;">Ingresa la contraseña para vender números.</p>
     <div class="form-group">
       <input type="password" id="input-login-password" class="form-input" placeholder="Contraseña" />
     </div>
@@ -103,7 +112,7 @@
     </div>
   </div>
 
-  <!-- MODAL: CREAR/EDITAR RIFA -->
+  <!-- MODAL: CREAR/EDITAR RIFA GLOBAL -->
   <div class="modal" id="modal-rifa">
     <button class="modal-close" onclick="UI.closeModal()">✕</button>
     <h2 class="modal-title" id="modal-rifa-titulo">Nueva Rifa</h2>
@@ -116,17 +125,23 @@
     <div class="payment-options" style="margin-bottom: 16px;">
       <div class="form-group" style="margin:0;">
         <label class="form-label">Total de números *</label>
-        <input type="number" id="rifa-cantidad" class="form-input" placeholder="Ej: 100" min="1" />
+        <input type="number" id="rifa-cantidad" class="form-input" placeholder="Ej: 1000" min="1" />
       </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Cant. de Talonarios *</label>
+        <input type="number" id="rifa-talonarios" class="form-input" placeholder="Ej: 10" min="1" />
+      </div>
+    </div>
+
+    <div class="payment-options" style="margin-bottom: 16px;">
       <div class="form-group" style="margin:0;">
         <label class="form-label">Precio por número ($) *</label>
         <input type="number" id="rifa-precio" class="form-input" placeholder="Ej: 3000" min="0" />
       </div>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Contraseña para administrar esta rifa *</label>
-      <input type="text" id="rifa-password" class="form-input" placeholder="Inventa una clave secreta" />
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Contraseña general *</label>
+        <input type="text" id="rifa-password" class="form-input" placeholder="Clave secreta" />
+      </div>
     </div>
 
     <div style="border-top: 1px dashed var(--color-border); padding-top: 15px; margin-top: 15px;">
@@ -148,7 +163,8 @@
     </div>
 
     <div style="border-top: 1px dashed var(--color-border); padding-top: 15px; margin-top: 15px;">
-      <h3 style="font-size: 14px; margin-bottom: 10px; color: var(--color-primary);">Datos de Cobro</h3>
+      <h3 style="font-size: 14px; margin-bottom: 10px; color: var(--color-primary);">Datos Bancarios Globales (Opcional)</h3>
+      <p style="font-size: 11px; color: var(--color-text-muted); margin-bottom: 10px;">Los vendedores podrán elegir usar esta cuenta o la suya propia.</p>
       <div class="form-group">
         <label class="form-label">Alias / CBU para transferencias</label>
         <input type="text" id="rifa-banco-id" class="form-input" placeholder="Alias o CBU" />
@@ -164,7 +180,7 @@
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Número de celular (para enviar comprobantes)</label>
+        <label class="form-label">Número de celular (Comprobantes)</label>
         <input type="tel" id="rifa-telefono" class="form-input" placeholder="Ej: 3865-123456" />
       </div>
     </div>
@@ -175,7 +191,77 @@
     </div>
   </div>
 
-  <!-- FLYER EXPORTACIÓN -->
+  <!-- MODAL: CREAR/EDITAR TALONARIO -->
+  <div class="modal" id="modal-talonario">
+    <button class="modal-close" onclick="UI.closeModal()">✕</button>
+    <h2 class="modal-title" id="modal-talonario-titulo">Nuevo Talonario</h2>
+    
+    <div class="form-group">
+      <label class="form-label">Nombre del vendedor/encargado *</label>
+      <input type="text" id="talonario-encargado" class="form-input" placeholder="Ej: Tía María" />
+    </div>
+
+    <div class="form-group" id="container-seleccionar-rango">
+      <label class="form-label">Selecciona un bloque disponible *</label>
+      <div id="talonario-rangos-container" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Datos bancarios para cobrar</label>
+      <div class="payment-options" style="grid-template-columns: 1fr;">
+        <label class="payment-opt">
+          <input type="radio" name="talonario_banco_tipo" value="global" checked onchange="UI.toggleBankFieldsTalonario()" />
+          <span class="payment-label">Usar cuenta principal de la Rifa</span>
+        </label>
+        <label class="payment-opt">
+          <input type="radio" name="talonario_banco_tipo" value="otros" onchange="UI.toggleBankFieldsTalonario()" />
+          <span class="payment-label">Usar mi propia cuenta bancaria</span>
+        </label>
+        <label class="payment-opt">
+          <input type="radio" name="talonario_banco_tipo" value="omitir" onchange="UI.toggleBankFieldsTalonario()" />
+          <span class="payment-label">Omitir datos bancarios</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group" id="group-telefono-talonario">
+      <label class="form-label">Tu número de WhatsApp (Opcional)</label>
+      <input type="tel" id="talonario-telefono" class="form-input" placeholder="Ej: 3865-123456" />
+    </div>
+
+    <div id="custom-bank-fields-talonario" style="display: none; background: var(--color-surface-2); padding: 15px; border-radius: var(--radius-md); margin-bottom: 16px; border: 1px dashed var(--color-border);">
+       <label class="form-label">Tipo de cuenta</label>
+       <div class="payment-options" style="margin-bottom: 12px;">
+         <label class="payment-opt"><input type="radio" name="talonario_banco_id_tipo" value="alias" checked /><span class="payment-label">Alias</span></label>
+         <label class="payment-opt"><input type="radio" name="talonario_banco_id_tipo" value="cbu" /><span class="payment-label">CBU/CVU</span></label>
+       </div>
+       <input type="text" id="talonario-banco-id" class="form-input" placeholder="Ingresa el Alias o CBU/CVU" style="margin-bottom: 10px;" />
+       <input type="text" id="talonario-banco-nombre" class="form-input" placeholder="Nombre del Banco" style="margin-bottom: 10px;" />
+       <input type="text" id="talonario-banco-titular" class="form-input" placeholder="Nombre del Titular" />
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="btn-guardar-talonario" onclick="UI.guardarTalonario()">Crear Talonario</button>
+      <button class="btn btn-danger" id="btn-eliminar-talonario" onclick="UI.eliminarTalonario()" style="display:none;">🗑 Eliminar</button>
+    </div>
+  </div>
+
+  <!-- MODAL: PREVISUALIZAR IMAGEN -->
+  <div class="modal" id="modal-preview">
+    <button class="modal-close" onclick="UI.closeModal()">✕</button>
+    <h2 class="modal-title">Previsualización del Flyer</h2>
+    <p style="font-size: 13px; color: var(--color-text-muted); margin-bottom: 15px;">Revisa cómo se ve antes de descargar.</p>
+    
+    <div id="preview-image-container" style="background: var(--color-surface-2); padding: 10px; border-radius: var(--radius-md); text-align: center; max-height: 50vh; overflow-y: auto; margin-bottom: 15px; border: 1px solid var(--color-border);">
+      <!-- La imagen se inyecta aquí -->
+    </div>
+    
+    <div class="modal-actions">
+      <button class="btn btn-primary" style="width: 100%;" onclick="UI.confirmarDescarga()">📸 Descargar Imagen</button>
+    </div>
+  </div>
+
+  <!-- FLYER EXPORTACIÓN (Oculto) -->
   <div id="export-container" style="position: absolute; left: -9999px; top: 0; width: 1080px; background: linear-gradient(135deg, #FFEFBA 0%, #FFFFFF 100%); padding: 60px; font-family: 'Inter', sans-serif; color: #333;">
     <div style="background: #ffffff; border-radius: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); padding: 50px; border: 5px solid #F5A623; position: relative; overflow: hidden;">
       <div style="position: absolute; top: 0; left: 0; width: 100%; height: 15px; background: repeating-linear-gradient(45deg, #F5A623, #F5A623 20px, #1E3045 20px, #1E3045 40px);"></div>
@@ -183,6 +269,7 @@
       <div style="text-align: center; margin-top: 20px; margin-bottom: 40px;">
         <span style="display: inline-block; background: #F5A623; color: #000; font-size: 20px; font-weight: 800; padding: 8px 24px; border-radius: 30px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;">🎟️ Gran Rifa Solidaria</span>
         <h1 id="export-titulo" style="color: #1E3045; font-size: 50px; font-weight: 900; margin: 0 0 15px 0; text-transform: uppercase; line-height: 1.1;">Título de la Rifa</h1>
+        <h2 id="export-rango-talonario" style="font-size: 26px; font-weight: 600; color: #555; margin: 10px 0 0 0; padding: 0 20px;">Números del 001 al 100</h2>
       </div>
       
       <div id="export-grid" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 40px; background: #f0f4f8; padding: 25px; border-radius: 20px;"></div>
