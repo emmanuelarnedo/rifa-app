@@ -32,9 +32,9 @@
     <header class="site-header">
       <div class="header-inner">
         <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
-           <button class="btn-icon" style="background: var(--color-surface-2); color: var(--color-text);" onclick="UI.volverAlInicio()">← Volver</button>
-           <!-- MODIFICACIÓN AQUÍ: Se acortó a "⚙️ Ajustes" y se añadió margin-right: 48px -->
-           <button class="btn-icon" style="background: transparent; color: var(--color-text-muted); border: 1px solid var(--color-border); margin-right: 48px;" onclick="UI.abrirModalEditarRifa()">⚙️ Ajustes</button>
+          <button class="btn-icon" style="background: var(--color-surface-2); color: var(--color-text);" onclick="UI.volverAlInicio()">← Volver</button>
+          <!-- MODIFICACIÓN AQUÍ: Se acortó a "⚙️ Ajustes" y se añadió margin-right: 48px -->
+          <button class="btn-icon" style="background: transparent; color: var(--color-text-muted); border: 1px solid var(--color-border); margin-right: 48px;" onclick="UI.abrirModalEditarRifa()">⚙️ Ajustes</button>
         </div>
         <div class="header-badge">🎟️ RIFA ACTIVA</div>
         <h1 class="site-title" id="rifa-title-display">Cargando...</h1>
@@ -67,7 +67,7 @@
     </main>
 
     <div class="actions-bar">
-      <button class="btn btn-primary" id="btn-previsualizar" style="display:none;" onclick="UI.previsualizarImagen()">👁️ Previsualizar Flyer del Talonario</button>
+      <button class="btn btn-primary" id="btn-previsualizar" style="display:none;" onclick="UI.previsualizarImagen()">👁️ Previsualizar Imagen del Talonario</button>
     </div>
   </div>
 
@@ -281,7 +281,7 @@
   <!-- MODAL: PREVISUALIZAR IMAGEN -->
   <div class="modal" id="modal-preview">
     <button class="modal-close" onclick="UI.closeModal()">✕</button>
-    <h2 class="modal-title">Previsualización del Flyer</h2>
+    <h2 class="modal-title">Previsualización de la imagen</h2>
     <p style="font-size: 13px; color: var(--color-text-muted); margin-bottom: 15px;">Revisa cómo se ve antes de descargar.</p>
     
     <div id="preview-image-container" style="background: var(--color-surface-2); padding: 10px; border-radius: var(--radius-md); text-align: center; max-height: 50vh; overflow-y: auto; margin-bottom: 15px; border: 1px solid var(--color-border);">
@@ -293,7 +293,7 @@
     </div>
   </div>
 
-  <!-- FLYER EXPORTACIÓN (Oculto) -->
+  <!-- IMAGEN EXPORTACIÓN (Oculto) -->
   <div id="export-container" style="position: absolute; left: -9999px; top: 0; width: 1080px; padding: 60px; font-family: 'Inter', sans-serif; color: #333;">
     <div id="export-card-bg" style="background: #ffffff; border-radius: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); padding: 50px; border: 5px solid #000; position: relative; overflow: hidden;">
       <div id="export-top-bar" style="position: absolute; top: 0; left: 0; width: 100%; height: 15px;"></div>
