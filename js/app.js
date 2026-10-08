@@ -1,15 +1,10 @@
-import { suscribirNumeros, suscribirTalonarios } from "./db.js";
+import { suscribirRifas } from "./db.js";
 import * as UI from "./ui.js";
 
-// Inicializar la interfaz vacía
+// Inicializa la visibilidad de pantallas
 UI.init();
 
-// Escuchar cambios en los talonarios (Encargados y rangos)
-suscribirTalonarios((talonariosData) => {
-  UI.updateTalonarios(talonariosData);
-});
-
-// Escuchar cambios en los números vendidos
-suscribirNumeros((numerosData) => {
-  UI.updateNumeros(numerosData);
+// Escuchar cambios globales (Lista de rifas)
+suscribirRifas((rifasData) => {
+  UI.updateRifasList(rifasData);
 });

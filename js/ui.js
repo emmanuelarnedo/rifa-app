@@ -1,15 +1,55 @@
 import * as DB from "./db.js";
 
-const PRECIO_FIJO = 3000;
-
 let _state = {
+  rifas: [],
+  currentRifa: null,
   numeros: {},
-  talonarios: [],
-  talonarioActivoId: null,
-  seleccion: null,
+  seleccionNumero: null,
+  rifaTargetParaLogin: null
 };
 
-export function init() { renderGrid(); }
+export function init() {
+  document.getElementById("view-home").style.display = "block";
+  document.getElementById("view-rifa").style.display = "none";
+}
+
+export function updateRifasList(data) {
+  _state.rifas = data;
+  
+  // Si estamos dentro de una rifa y se actualizó su configuración
+  if (_state.currentRifa) {
+    const updated = data.find(r => r.id === _state.currentRifa.id);
+    if (updated) {
+      _state.currentRifa = updated;
+      renderHeaderRifa();
+      renderGrid();
+    } else {
+      volverAlInicio(); // La rifa fue eliminada
+    }
+  }
+  
+  const list = document.getElementById("rifas-list");
+  list.innerHTML = "";
+  
+  if (data.length === 0) {
+    list.innerHTML = "<p style='color: var(--color-text-muted); text-align: center; padding: 20px;'>No hay rifas activas. Crea la primera.</p>";
+    return;
+  }
+
+  data.forEach(rifa => {
+    const card = document.createElement("div");
+    card.style = "background: var(--color-surface-2); padding: 15px; border-radius: var(--radius-md); border: 1px solid var(--color-border); cursor: pointer; display: flex; justify-content: space-between; align-items: center;";
+    card.innerHTML = `
+      <div>
+        <h4 style="margin: 0; color: var(--color-text); font-size: 16px;">${rifa.titulo}</h4>
+        <span style="font-size: 12px; color: var(--color-text-muted);">Total: ${rifa.cantidadNumeros} números | Sortea: ${rifa.fechaSorteo || 'A definir'}</span>
+      </div>
+      <button class="btn btn-primary" style="padding: 8px 12px;">Ingresar</button>
+    `;
+    card.onclick = () => solicitarPassword(rifa.id);
+    list.appendChild(card);
+  });
+}
 
 export function updateNumeros(data) {
   _state.numeros = data;
@@ -17,277 +57,200 @@ export function updateNumeros(data) {
   renderGrid();
 }
 
-export function updateTalonarios(data) {
-  _state.talonarios = data;
+// ---- NAVEGACIÓN Y ACCESO ----
+function solicitarPassword(rifaId) {
+  _state.rifaTargetParaLogin = rifaId;
+  document.getElementById("input-login-password").value = "";
+  document.getElementById("modal-overlay").classList.add("active");
+  document.getElementById("modal-login").classList.add("active");
+}
+
+export function verificarPassword() {
+  const rifa = _state.rifas.find(r => r.id === _state.rifaTargetParaLogin);
+  const pass = document.getElementById("input-login-password").value;
   
-  const activoExiste = data.some(t => t.id === _state.talonarioActivoId);
-  
-  if (!activoExiste) {
-    if (data.length > 0) {
-      _state.talonarioActivoId = data[0].id;
-    } else {
-      _state.talonarioActivoId = null;
-    }
+  if (pass === rifa.password) {
+    closeModal();
+    _state.currentRifa = rifa;
+    document.getElementById("view-home").style.display = "none";
+    document.getElementById("view-rifa").style.display = "block";
+    renderHeaderRifa();
+    DB.suscribirNumeros(rifa.id, updateNumeros);
+  } else {
+    showToast("❌ Contraseña incorrecta");
   }
-  
-  renderTabs();
-  renderStats();
-  renderGrid();
+}
+
+export function volverAlInicio() {
+  _state.currentRifa = null;
+  _state.numeros = {};
+  DB.desuscribirNumeros();
+  document.getElementById("view-home").style.display = "block";
+  document.getElementById("view-rifa").style.display = "none";
+}
+
+// ---- RENDER RIFA INTERNA ----
+function renderHeaderRifa() {
+  const r = _state.currentRifa;
+  document.getElementById("rifa-title-display").textContent = r.titulo;
+  document.getElementById("rifa-rango-display").textContent = `1 al ${r.cantidadNumeros}`;
 }
 
 function renderStats() {
-  const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
   let vendidos = 0, efectivo = 0, transferencia = 0;
+  const precio = Number(_state.currentRifa.precio);
 
-  if (activo) {
-    for (let i = activo.inicio; i <= activo.fin; i++) {
-      const key = String(i).padStart(3, "0");
-      const num = _state.numeros[key];
-      if (num) {
-        vendidos++;
-        if (num.pago === "efectivo") efectivo += PRECIO_FIJO;
-        else if (num.pago === "transferencia") transferencia += PRECIO_FIJO;
-      }
-    }
-  }
+  Object.values(_state.numeros).forEach(num => {
+    vendidos++;
+    if (num.pago === "efectivo") efectivo += precio;
+    else if (num.pago === "transferencia") transferencia += precio;
+  });
 
   document.getElementById("stat-vendidos").textContent = vendidos;
   document.getElementById("stat-efectivo").textContent = `$${efectivo.toLocaleString("es-AR")}`;
   document.getElementById("stat-transfer").textContent = `$${transferencia.toLocaleString("es-AR")}`;
 }
 
-function renderTabs() {
-  const container = document.getElementById("talonarios-list");
-  container.innerHTML = "";
-  _state.talonarios.forEach(tal => {
-    const btn = document.createElement("button");
-    btn.className = "tab-talonario" + (tal.id === _state.talonarioActivoId ? " active" : "");
-    btn.textContent = tal.encargado;
-    btn.onclick = () => {
-      _state.talonarioActivoId = tal.id;
-      renderTabs(); renderStats(); renderGrid();
-    };
-    container.appendChild(btn);
-  });
-}
-
 function renderGrid() {
   const grid = document.getElementById("numbers-grid");
-  const titulo = document.getElementById("talonario-activo-titulo");
-  const btnEditar = document.getElementById("btn-editar-rango");
-  
-  if (_state.talonarios.length === 0) {
-    grid.innerHTML = "<p style='grid-column: span 10; text-align: center; padding: 20px;'>No hay talonarios activos.</p>";
-    titulo.textContent = "Sin talonarios";
-    btnEditar.style.display = "none";
-    return;
-  }
-
-  const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
-  if (!activo) return;
-
-  titulo.textContent = `Talonario de ${activo.encargado} (${String(activo.inicio).padStart(3,'0')} al ${String(activo.fin).padStart(3,'0')})`;
-  btnEditar.style.display = "inline-block"; 
   grid.innerHTML = "";
+  
+  const total = Number(_state.currentRifa.cantidadNumeros);
+  const padLength = Math.max(3, total.toString().length); // Asegura consistencia visual
 
-  for (let i = activo.inicio; i <= activo.fin; i++) {
-    const key = String(i).padStart(3, "0");
+  for (let i = 1; i <= total; i++) {
+    const key = String(i).padStart(padLength, "0");
     const data = _state.numeros[key];
     const sold = !!data;
     
     const cell = document.createElement("button");
     cell.className = "number-cell" + (sold ? " sold" : "");
     cell.textContent = key;
-    cell.onclick = () => openModal(key);
+    cell.onclick = () => openModalVenta(key);
     grid.appendChild(cell);
   }
 }
 
-export function toggleBankFieldsNuevo() {
-  const tipo = document.querySelector('input[name="banco_tipo_nuevo"]:checked').value;
-  document.getElementById("custom-bank-fields-nuevo").style.display = (tipo === "otros") ? "block" : "none";
-}
-
-export function toggleBankFieldsEdit() {
-  const tipo = document.querySelector('input[name="banco_tipo_edit"]:checked').value;
-  document.getElementById("custom-bank-fields-edit").style.display = (tipo === "otros") ? "block" : "none";
-}
-
-export function openTalonarioModal() {
-  document.getElementById("input-encargado").value = "";
-  document.getElementById("input-telefono-encargado").value = "";
+// ---- FORMULARIO DE RIFA (Crear/Editar) ----
+export function abrirModalCrearRifa() {
+  document.getElementById("modal-rifa-titulo").textContent = "Nueva Rifa";
+  document.getElementById("rifa-titulo").value = "";
+  document.getElementById("rifa-cantidad").value = "";
+  document.getElementById("rifa-precio").value = "";
+  document.getElementById("rifa-password").value = "";
+  document.getElementById("rifa-fecha").value = "";
+  document.getElementById("rifa-tombola").value = "";
+  document.getElementById("rifa-banco-id").value = "";
+  document.getElementById("rifa-banco-nombre").value = "";
+  document.getElementById("rifa-banco-titular").value = "";
+  document.getElementById("rifa-telefono").value = "";
   
-  document.querySelector('input[name="banco_tipo_nuevo"][value="celeste"]').checked = true;
-  document.querySelector('input[name="banco_id_tipo_nuevo"][value="alias"]').checked = true;
-  document.getElementById("input-banco-id-nuevo").value = "";
-  document.getElementById("input-banco-nombre-nuevo").value = "";
-  document.getElementById("input-banco-titular-nuevo").value = "";
-  toggleBankFieldsNuevo();
+  document.getElementById("premios-container").innerHTML = "";
+  agregarCampoPremio(); // Agrega al menos uno vacío
+
+  document.getElementById("btn-eliminar-rifa").style.display = "none";
+  _state.seleccionNumero = null; // Usamos esto temporalmente para indicar si es edicion (null = nuevo)
 
   document.getElementById("modal-overlay").classList.add("active");
-  document.getElementById("modal-talonario").classList.add("active");
+  document.getElementById("modal-rifa").classList.add("active");
 }
 
-export async function guardarTalonario() {
-  const encargado = document.getElementById("input-encargado").value.trim();
-  if (!encargado) { showToast("⚠️ Ingresa el nombre del encargado"); return; }
+export function abrirModalEditarRifa() {
+  const r = _state.currentRifa;
+  document.getElementById("modal-rifa-titulo").textContent = "Editar Rifa";
+  document.getElementById("rifa-titulo").value = r.titulo;
+  document.getElementById("rifa-cantidad").value = r.cantidadNumeros;
+  document.getElementById("rifa-precio").value = r.precio;
+  document.getElementById("rifa-password").value = r.password;
+  document.getElementById("rifa-fecha").value = r.fechaSorteo || "";
+  document.getElementById("rifa-tombola").value = r.tombola || "";
+  document.getElementById("rifa-banco-id").value = r.bancoId || "";
+  document.getElementById("rifa-banco-nombre").value = r.bancoNombre || "";
+  document.getElementById("rifa-banco-titular").value = r.bancoTitular || "";
+  document.getElementById("rifa-telefono").value = r.telefono || "";
 
-  const bancoTipo = document.querySelector('input[name="banco_tipo_nuevo"]:checked').value;
-  const telefonoEncargado = document.getElementById("input-telefono-encargado").value.trim();
-  
-  let banco = { tipo: bancoTipo };
-  if (bancoTipo === "otros") {
-    banco.idTipo = document.querySelector('input[name="banco_id_tipo_nuevo"]:checked').value;
-    banco.idValor = document.getElementById("input-banco-id-nuevo").value.trim();
-    banco.nombre = document.getElementById("input-banco-nombre-nuevo").value.trim();
-    banco.titular = document.getElementById("input-banco-titular-nuevo").value.trim();
-    
-    if(!banco.idValor || !banco.nombre || !banco.titular) {
-      showToast("⚠️ Completa todos los datos bancarios");
-      return;
-    }
-  }
-
-  let nextInicio = 1;
-  while (true) {
-    const testFin = nextInicio + 99;
-    const solapa = _state.talonarios.some(t => !(testFin < t.inicio || nextInicio > t.fin));
-    if (!solapa) break;
-    nextInicio += 100;
-  }
-  const fin = nextInicio + 99;
-
-  try {
-    await DB.guardarTalonario({ encargado, telefonoEncargado, inicio: nextInicio, fin, banco });
-    showToast(`✅ Talonario creado (${nextInicio} al ${fin})`);
-    closeModal();
-  } catch (err) {
-    console.error(err);
-    showToast("❌ Error al crear talonario");
-  }
-}
-
-export function editarRangoTalonario() {
-  const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
-  if(!activo) return;
-
-  document.getElementById("input-edit-encargado").value = activo.encargado;
-  document.getElementById("input-edit-telefono-encargado").value = activo.telefonoEncargado || "";
-  document.getElementById("input-edit-inicio").value = activo.inicio;
-  document.getElementById("input-edit-fin").value = activo.fin;
-
-  const banco = activo.banco || { tipo: "celeste" };
-  document.querySelector(`input[name="banco_tipo_edit"][value="${banco.tipo}"]`).checked = true;
-  if (banco.tipo === "otros") {
-    document.querySelector(`input[name="banco_id_tipo_edit"][value="${banco.idTipo || 'alias'}"]`).checked = true;
-    document.getElementById("input-banco-id-edit").value = banco.idValor || "";
-    document.getElementById("input-banco-nombre-edit").value = banco.nombre || "";
-    document.getElementById("input-banco-titular-edit").value = banco.titular || "";
-  }
-  toggleBankFieldsEdit();
-
-  document.getElementById("delete-reason-container").style.display = "none";
-  document.getElementById("modal-actions-edit").style.display = "flex";
-  document.getElementById("input-motivo-borrado").value = "";
-
-  document.getElementById("modal-overlay").classList.add("active");
-  document.getElementById("modal-editar").classList.add("active");
-}
-
-export function actualizarRangoEditFin() {
-  const inicio = Number(document.getElementById("input-edit-inicio").value);
-  if (!isNaN(inicio) && inicio > 0) {
-    document.getElementById("input-edit-fin").value = inicio + 99;
+  const container = document.getElementById("premios-container");
+  container.innerHTML = "";
+  if (r.premios && r.premios.length > 0) {
+    r.premios.forEach(p => agregarCampoPremio(p));
   } else {
-    document.getElementById("input-edit-fin").value = "";
+    agregarCampoPremio();
   }
+
+  document.getElementById("btn-eliminar-rifa").style.display = "block";
+  _state.seleccionNumero = r.id; // Guardamos el ID para saber que editamos
+
+  document.getElementById("modal-overlay").classList.add("active");
+  document.getElementById("modal-rifa").classList.add("active");
 }
 
-export async function guardarEdicionRango() {
-  const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
-  if(!activo) return;
+export function agregarCampoPremio(valor = "") {
+  const container = document.getElementById("premios-container");
+  const div = document.createElement("div");
+  div.style = "display:flex; gap:10px; margin-bottom:10px;";
+  div.innerHTML = `
+    <input type="text" class="form-input input-premio" placeholder="Ej: 1° Premio: Viaje a Salta" value="${valor}" />
+    <button class="btn btn-danger" style="padding: 0 15px;" onclick="this.parentElement.remove()">X</button>
+  `;
+  container.appendChild(div);
+}
 
-  const encargado = document.getElementById("input-edit-encargado").value.trim();
-  if (!encargado) { showToast("⚠️ Ingresa el nombre del encargado"); return; }
+export async function guardarRifa() {
+  const titulo = document.getElementById("rifa-titulo").value.trim();
+  const cantidadNumeros = parseInt(document.getElementById("rifa-cantidad").value);
+  const precio = parseFloat(document.getElementById("rifa-precio").value);
+  const password = document.getElementById("rifa-password").value.trim();
 
-  const bancoTipo = document.querySelector('input[name="banco_tipo_edit"]:checked').value;
-  const telefonoEncargado = document.getElementById("input-edit-telefono-encargado").value.trim();
-
-  const inicio = Number(document.getElementById("input-edit-inicio").value);
-  if (isNaN(inicio) || inicio < 1) { showToast("⚠️ Número de inicio inválido"); return; }
-  
-  if (inicio % 10 !== 1) {
-    showToast("⚠️ El número de inicio debe terminar en 1 (ej: 1, 101, 301)");
+  if(!titulo || isNaN(cantidadNumeros) || isNaN(precio) || !password) {
+    showToast("⚠️ Completa todos los campos obligatorios (*)");
     return;
   }
-  
-  const fin = inicio + 99;
 
-  const solapa = _state.talonarios.some(t => {
-    if (t.id === activo.id) return false; 
-    return !(fin < t.inicio || inicio > t.fin);
+  // Recolectar premios
+  const inputsPremios = document.querySelectorAll(".input-premio");
+  const premios = [];
+  inputsPremios.forEach(inp => {
+    if(inp.value.trim() !== "") premios.push(inp.value.trim());
   });
 
-  if (solapa) {
-    showToast("❌ Rango ocupado. Este rango choca con otro talonario.");
-    return;
-  }
+  const payload = {
+    titulo, cantidadNumeros, precio, password, premios,
+    fechaSorteo: document.getElementById("rifa-fecha").value.trim(),
+    tombola: document.getElementById("rifa-tombola").value.trim(),
+    bancoId: document.getElementById("rifa-banco-id").value.trim(),
+    bancoNombre: document.getElementById("rifa-banco-nombre").value.trim(),
+    bancoTitular: document.getElementById("rifa-banco-titular").value.trim(),
+    telefono: document.getElementById("rifa-telefono").value.trim()
+  };
 
-  let banco = { tipo: bancoTipo };
-  if (bancoTipo === "otros") {
-    banco.idTipo = document.querySelector('input[name="banco_id_tipo_edit"]:checked').value;
-    banco.idValor = document.getElementById("input-banco-id-edit").value.trim();
-    banco.nombre = document.getElementById("input-banco-nombre-edit").value.trim();
-    banco.titular = document.getElementById("input-banco-titular-edit").value.trim();
-    
-    if(!banco.idValor || !banco.nombre || !banco.titular) {
-      showToast("⚠️ Completa todos los datos bancarios");
-      return;
-    }
-  }
-
-  const btn = document.getElementById("btn-guardar-edicion");
-  btn.disabled = true; btn.textContent = "Guardando...";
+  const btn = document.getElementById("btn-guardar-rifa");
+  btn.textContent = "Guardando..."; btn.disabled = true;
 
   try {
-    await DB.actualizarTalonario(activo.id, { encargado, telefonoEncargado, inicio, fin, banco });
-    showToast(`✅ Talonario actualizado`);
+    const id = _state.seleccionNumero; // null si es nuevo, string si es edicion
+    await DB.guardarRifa(id, payload);
+    showToast("✅ Rifa guardada con éxito");
     closeModal();
-  } catch(err) {
-    showToast("❌ Error al actualizar");
+  } catch(e) {
+    showToast("❌ Error al guardar rifa");
   } finally {
-    btn.disabled = false; btn.textContent = "Guardar Cambios";
+    btn.textContent = "Guardar Rifa"; btn.disabled = false;
   }
 }
 
-export function eliminarTalonario() {
-  document.getElementById("modal-actions-edit").style.display = "none";
-  document.getElementById("delete-reason-container").style.display = "block";
-}
-
-export async function confirmarSolicitudBorrado() {
-  const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
-  if(!activo) return;
-
-  const motivo = document.getElementById("input-motivo-borrado").value.trim();
-  if (!motivo) { showToast("⚠️ Debes ingresar un motivo de eliminación"); return; }
-
+export async function eliminarRifaDefinitiva() {
+  if(!confirm("¿Estás 100% seguro de borrar TODA esta rifa? Se perderán las ventas.")) return;
   try {
-    await DB.solicitarBorrado(activo.id, motivo);
-    showToast(`✅ Solicitud enviada con éxito`);
+    await DB.eliminarRifa(_state.seleccionNumero);
+    showToast("🗑 Rifa eliminada");
     closeModal();
-    
-    // Recarga la página después de 1.5 segundos
-    setTimeout(() => {
-      window.location.reload();
-    }, 1500);
-
-  } catch(err) {
-    showToast("❌ Error al enviar la solicitud");
+  } catch(e) {
+    showToast("❌ Error al eliminar");
   }
 }
 
-function openModal(key) {
+// ---- GESTIÓN DE VENTAS ----
+function openModalVenta(key) {
   const data = _state.numeros[key];
   const isSold = !!data;
   document.getElementById("modal-title").textContent = isSold ? "Editar venta" : "Registrar venta";
@@ -298,93 +261,77 @@ function openModal(key) {
   document.getElementById("pago-efectivo").checked = data?.pago === "efectivo" || !isSold;
   document.getElementById("pago-transfer").checked = data?.pago === "transferencia";
 
-  _state.seleccion = key;
+  _state.seleccionNumero = key;
   document.getElementById("modal-overlay").classList.add("active");
   document.getElementById("modal-form").classList.add("active");
 }
 
-export function closeModal() {
-  document.getElementById("modal-overlay").classList.remove("active");
-  document.getElementById("modal-form").classList.remove("active");
-  document.getElementById("modal-talonario").classList.remove("active");
-  document.getElementById("modal-editar").classList.remove("active");
-  _state.seleccion = null;
-}
-
 export async function guardarNumero() {
-  const key = _state.seleccion;
+  const key = _state.seleccionNumero;
   const nombre = document.getElementById("input-nombre").value.trim();
   const pago = document.querySelector('input[name="pago"]:checked')?.value;
   const tel = document.getElementById("input-telefono").value.trim();
+  
   if (!nombre) { showToast("⚠️ Ingresa el nombre del comprador"); return; }
   
-  const btn = document.getElementById("btn-guardar");
-  btn.disabled = true; btn.textContent = "Guardando...";
+  document.getElementById("btn-guardar").disabled = true;
   try {
-    await DB.guardarNumero(key, { nombre, pago, telefono: tel || null });
-    showToast(`✅ #${key} guardado`); closeModal();
+    await DB.guardarNumero(_state.currentRifa.id, key, { nombre, pago, telefono: tel || null });
+    showToast(`✅ #${key} guardado`); 
+    closeModal();
   } catch (err) { showToast("❌ Error al guardar"); } 
-  finally { btn.disabled = false; btn.textContent = "✓ Guardar"; }
+  finally { document.getElementById("btn-guardar").disabled = false; }
 }
 
 export async function eliminarNumero() {
-  const key = _state.seleccion;
+  const key = _state.seleccionNumero;
   if (!confirm(`¿Liberar el número ${key}?`)) return;
-  try { await DB.eliminarNumero(key); showToast(`🗑 #${key} liberado`); closeModal(); } 
-  catch (err) { showToast("❌ Error al eliminar"); }
+  try { 
+    await DB.eliminarNumero(_state.currentRifa.id, key); 
+    showToast(`🗑 #${key} liberado`); 
+    closeModal(); 
+  } catch (err) { showToast("❌ Error al eliminar"); }
 }
 
+export function closeModal() {
+  document.querySelectorAll(".modal").forEach(m => m.classList.remove("active"));
+  document.getElementById("modal-overlay").classList.remove("active");
+}
+
+// ---- DESCARGAR IMAGEN ----
 export async function descargarImagen() {
-  const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
-  if (!activo) { showToast("⚠️ No hay talonario activo"); return; }
+  const r = _state.currentRifa;
+  if (!r) return;
 
-  const exportBancoContainer = document.getElementById("export-banco-container");
-  const exportComprobanteContainer = document.getElementById("export-comprobante-container");
-  
-  const exportId = document.getElementById("export-banco-id");
-  const exportCbu = document.getElementById("export-banco-cbu");
-  const exportNombre = document.getElementById("export-banco-nombre");
-  const exportTitular = document.getElementById("export-banco-titular");
-  const exportTelefono = document.getElementById("export-telefono");
+  // Poblar flyer dinámico
+  document.getElementById("export-titulo").textContent = r.titulo;
+  document.getElementById("export-precio").textContent = `Valor: $${r.precio}`;
+  document.getElementById("export-banco-id").innerHTML = `<strong>Alias/CBU:</strong> ${r.bancoId || '-'}`;
+  document.getElementById("export-banco-nombre").innerHTML = `<strong>Banco:</strong> ${r.bancoNombre || '-'}`;
+  document.getElementById("export-banco-titular").innerHTML = `<strong>Titular:</strong> ${r.bancoTitular || '-'}`;
+  document.getElementById("export-telefono").textContent = r.telefono || '-';
+  document.getElementById("export-fecha").innerHTML = `📅 Sortea el ${r.fechaSorteo || '-'}`;
+  document.getElementById("export-tombola").innerHTML = `por ${r.tombola || '-'}`;
 
-  exportTelefono.textContent = activo.telefonoEncargado || "";
-
-  const banco = activo.banco || { tipo: "celeste" };
-  
-  if (banco.tipo === "omitir") {
-    exportBancoContainer.style.display = "none";
-    exportComprobanteContainer.style.display = "none";
-  } else {
-    exportBancoContainer.style.display = "block";
-    exportComprobanteContainer.style.display = "block";
-
-    if (banco.tipo === "celeste") {
-      exportId.innerHTML = "<strong>Alias:</strong> CELESTEMAZA.UALA";
-      exportId.style.display = "block";
-      exportCbu.innerHTML = "<strong>CBU/CVU:</strong> 34802000003065968";
-      exportCbu.style.display = "block";
-      exportNombre.innerHTML = "<strong>Banco:</strong> Ualá Bank S.A.U";
-      exportTitular.innerHTML = "<strong>Titular:</strong> Celeste Abigail Maza";
-    } else if (banco.tipo === "otros") {
-      if (banco.idTipo === "alias") {
-        exportId.innerHTML = `<strong>Alias:</strong> ${banco.idValor}`;
-        exportId.style.display = "block";
-        exportCbu.style.display = "none";
-      } else {
-        exportCbu.innerHTML = `<strong>CBU/CVU:</strong> ${banco.idValor}`;
-        exportCbu.style.display = "block";
-        exportId.style.display = "none";
-      }
-      exportNombre.innerHTML = `<strong>Banco:</strong> ${banco.nombre}`;
-      exportTitular.innerHTML = `<strong>Titular:</strong> ${banco.titular}`;
-    }
+  const listaPremios = document.getElementById("export-premios-list");
+  listaPremios.innerHTML = "";
+  if(r.premios && r.premios.length > 0) {
+    r.premios.forEach(p => {
+      listaPremios.innerHTML += `<li style="margin-bottom: 10px; display:flex; align-items:center; gap:10px;"><span style="font-size:30px;">🎁</span> <span>${p}</span></li>`;
+    });
   }
 
+  // Armar grilla
   const exportGrid = document.getElementById("export-grid");
   exportGrid.innerHTML = "";
+  const total = Number(r.cantidadNumeros);
+  const padLength = Math.max(3, total.toString().length);
+  
+  // Limite visual por seguridad del export PDF/PNG (para no congelar celulares si ponen 10,000 números)
+  const renderMax = Math.min(total, 1000); 
 
-  for (let i = activo.inicio; i <= activo.fin; i++) {
-    const key = String(i).padStart(3, "0");
+  for (let i = 1; i <= renderMax; i++) {
+    const key = String(i).padStart(padLength, "0");
     const isSold = !!_state.numeros[key];
 
     const cell = document.createElement("div");
@@ -392,11 +339,16 @@ export async function descargarImagen() {
     cell.style.display = "flex";
     cell.style.alignItems = "center";
     cell.style.justifyContent = "center";
-    cell.style.aspectRatio = "1";
-    cell.style.fontSize = "26px";
+    // Ajustar tamaño del cuadro de la imagen según cantidad de números
+    const size = total > 300 ? "30px" : "50px"; 
+    const font = total > 300 ? "14px" : "22px";
+    
+    cell.style.width = size;
+    cell.style.height = size;
+    cell.style.fontSize = font;
     cell.style.fontWeight = "900";
-    cell.style.border = "3px solid #ccc";
-    cell.style.borderRadius = "10px";
+    cell.style.border = "2px solid #ccc";
+    cell.style.borderRadius = "8px";
 
     if (isSold) {
       cell.style.backgroundColor = "#ffebee";
@@ -407,7 +359,6 @@ export async function descargarImagen() {
       cell.style.backgroundColor = "#ffffff";
       cell.style.color = "#222222";
     }
-    
     exportGrid.appendChild(cell);
   }
 
@@ -417,40 +368,31 @@ export async function descargarImagen() {
   container.style.zIndex = "-1";
 
   const btn = document.getElementById("btn-descargar");
-  btn.textContent = "Generando...";
-  btn.disabled = true;
+  btn.textContent = "Generando..."; btn.disabled = true;
 
   try {
-    const canvas = await html2canvas(container, { scale: 2, useCORS: true });
-    
+    const canvas = await html2canvas(container, { scale: 1.5, useCORS: true });
     const link = document.createElement("a");
-    link.download = `Rifa_Maza_${activo.inicio}-${activo.fin}.png`;
+    link.download = `Rifa_${r.titulo.replace(/\s+/g, '_')}.png`;
     link.href = canvas.toDataURL("image/png");
     link.click();
     showToast("✅ Imagen generada con éxito");
   } catch (error) {
-    console.error(error);
     showToast("❌ Error al generar imagen");
   } finally {
     container.style.left = "-9999px";
-    btn.textContent = "📸 Descargar Imagen";
-    btn.disabled = false;
+    btn.textContent = "📸 Descargar Imagen"; btn.disabled = false;
   }
 }
 
 function showToast(msg) {
   let toast = document.getElementById("toast");
-  if (!toast) {
-    toast = document.createElement("div"); toast.id = "toast";
-    toast.className = "toast"; document.body.appendChild(toast);
-  }
   toast.textContent = msg; toast.classList.add("show");
   setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
 window.UI = { 
-  closeModal, guardarNumero, eliminarNumero, openTalonarioModal, 
-  guardarTalonario, editarRangoTalonario, actualizarRangoEditFin, 
-  guardarEdicionRango, eliminarTalonario, descargarImagen,
-  toggleBankFieldsNuevo, toggleBankFieldsEdit, confirmarSolicitudBorrado
+  closeModal, guardarNumero, eliminarNumero, descargarImagen,
+  abrirModalCrearRifa, agregarCampoPremio, guardarRifa, abrirModalEditarRifa, eliminarRifaDefinitiva,
+  verificarPassword, volverAlInicio 
 };

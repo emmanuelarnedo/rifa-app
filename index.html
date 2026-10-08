@@ -3,65 +3,80 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>Rifa - Cirugía Raul Walter Maza</title>
+  <title>Gestor de Rifas Solidarias</title>
   <link rel="stylesheet" href="css/styles.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="/api/env"></script>
 </head>
 <body>
 
-  <header class="site-header">
-    <div class="header-inner">
-      <div class="header-badge">🎟️ RIFA SOLIDARIA</div>
-      <h1 class="site-title">Rifa para solventar gastos de cirugía de<br><span class="highlight">Raul Walter Maza</span></h1>
-      
-      <div class="stats-bar">
-        <div class="stat">
-          <span class="stat-number" id="stat-vendidos">0</span>
-          <span class="stat-label">Vendidos</span>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat">
-          <span class="stat-number text-efectivo" id="stat-efectivo">$0</span>
-          <span class="stat-label">Recaudado Efectivo</span>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat">
-          <span class="stat-number text-transfer" id="stat-transfer">$0</span>
-          <span class="stat-label">Recaudado Transf.</span>
-        </div>
+  <!-- PANTALLA 1: LISTADO DE RIFAS -->
+  <div id="view-home">
+    <header class="site-header" style="text-align: center; padding: 40px 20px;">
+      <h1 class="highlight" style="font-size: 32px; margin-bottom: 10px;">🎟️ Gestor de Rifas</h1>
+      <p style="color: var(--color-text-muted);">Crea tu rifa, define los premios y lleva el control de tus ventas.</p>
+      <button class="btn btn-primary" style="margin-top: 20px; padding: 12px 24px;" onclick="UI.abrirModalCrearRifa()">+ Crear Nueva Rifa</button>
+    </header>
+    <main class="main-content">
+      <h3 style="margin-bottom: 15px; border-bottom: 1px solid var(--color-border); padding-bottom: 10px;">Rifas Activas</h3>
+      <div id="rifas-list" style="display: flex; flex-direction: column; gap: 10px;">
+        <!-- Se inyectan las rifas desde JS -->
       </div>
-    </div>
-  </header>
-
-  <nav class="talonarios-nav">
-    <div class="talonarios-list" id="talonarios-list"></div>
-    <button class="btn-nuevo-talonario" onclick="UI.openTalonarioModal()">+ Nuevo Talonario</button>
-  </nav>
-
-  <main class="main-content">
-    <div class="talonario-info">
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <h3 id="talonario-activo-titulo">Cargando...</h3>
-        <button id="btn-editar-rango" class="btn-icon" style="display: none;" onclick="UI.editarRangoTalonario()">✏️ Editar</button>
-      </div>
-      <div class="legend">
-        <span class="legend-item"><span class="dot dot-available"></span>Disponible</span>
-        <span class="legend-item"><span class="dot dot-sold"></span>Vendido</span>
-      </div>
-    </div>
-    <div class="numbers-grid" id="numbers-grid"></div>
-  </main>
-
-  <div class="actions-bar">
-    <button class="btn btn-print" id="btn-descargar" onclick="UI.descargarImagen()">📸 Descargar Imagen</button>
+    </main>
   </div>
 
-  <div class="tooltip" id="tooltip"></div>
+  <!-- PANTALLA 2: GESTIÓN DE LA RIFA (Oculta por defecto) -->
+  <div id="view-rifa" style="display: none;">
+    <header class="site-header">
+      <div class="header-inner">
+        <button class="btn-icon" style="margin-bottom: 15px; background: var(--color-surface-2); color: white;" onclick="UI.volverAlInicio()">← Volver al inicio</button>
+        <div class="header-badge">🎟️ RIFA ACTIVA</div>
+        <h1 class="site-title" id="rifa-title-display">Cargando...</h1>
+        
+        <div class="stats-bar">
+          <div class="stat"><span class="stat-number" id="stat-vendidos">0</span><span class="stat-label">Vendidos</span></div>
+          <div class="stat-divider"></div>
+          <div class="stat"><span class="stat-number text-efectivo" id="stat-efectivo">$0</span><span class="stat-label">En Efectivo</span></div>
+          <div class="stat-divider"></div>
+          <div class="stat"><span class="stat-number text-transfer" id="stat-transfer">$0</span><span class="stat-label">En Transf.</span></div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <div class="talonario-info">
+        <h3 id="rifa-rango-display">Total de números: 0</h3>
+        <div class="legend">
+          <span class="legend-item"><span class="dot dot-available"></span>Libre</span>
+          <span class="legend-item"><span class="dot dot-sold"></span>Vendido</span>
+        </div>
+      </div>
+      <div class="numbers-grid" id="numbers-grid"></div>
+    </main>
+
+    <div class="actions-bar">
+      <button class="btn btn-print" onclick="UI.abrirModalEditarRifa()">⚙️ Editar Rifa</button>
+      <button class="btn btn-primary" id="btn-descargar" onclick="UI.descargarImagen()">📸 Descargar Imagen</button>
+    </div>
+  </div>
 
   <div class="modal-overlay" id="modal-overlay" onclick="UI.closeModal()"></div>
+
+  <!-- MODAL: CONTRASEÑA -->
+  <div class="modal" id="modal-login">
+    <button class="modal-close" onclick="UI.closeModal()">✕</button>
+    <h2 class="modal-title">Ingresar a la rifa</h2>
+    <p style="font-size: 13px; color: var(--color-text-muted); margin-bottom: 15px;">Esta rifa está protegida. Ingresa la contraseña asignada por el creador.</p>
+    <div class="form-group">
+      <input type="password" id="input-login-password" class="form-input" placeholder="Contraseña" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" style="width:100%" onclick="UI.verificarPassword()">Ingresar</button>
+    </div>
+  </div>
+
+  <!-- MODAL: GESTIONAR VENTA -->
   <div class="modal" id="modal-form">
     <button class="modal-close" onclick="UI.closeModal()">✕</button>
     <h2 class="modal-title" id="modal-title">Registrar número</h2>
@@ -71,207 +86,135 @@
       <label class="form-label">Nombre y Apellido *</label>
       <input type="text" id="input-nombre" class="form-input" autocomplete="off" />
     </div>
-
     <div class="form-group">
-      <label class="form-label">Forma de pago * ($3000)</label>
+      <label class="form-label">Forma de pago *</label>
       <div class="payment-options">
-        <label class="payment-opt">
-          <input type="radio" name="pago" value="efectivo" id="pago-efectivo" />
-          <span class="payment-label">💵 Efectivo</span>
-        </label>
-        <label class="payment-opt">
-          <input type="radio" name="pago" value="transferencia" id="pago-transfer" />
-          <span class="payment-label">📲 Transferencia</span>
-        </label>
+        <label class="payment-opt"><input type="radio" name="pago" value="efectivo" id="pago-efectivo" /><span class="payment-label">💵 Efectivo</span></label>
+        <label class="payment-opt"><input type="radio" name="pago" value="transferencia" id="pago-transfer" /><span class="payment-label">📲 Transferencia</span></label>
       </div>
     </div>
-
     <div class="form-group">
       <label class="form-label">Teléfono (opcional)</label>
       <input type="tel" id="input-telefono" class="form-input" />
     </div>
-
     <div class="modal-actions">
       <button class="btn btn-primary" id="btn-guardar" onclick="UI.guardarNumero()">✓ Guardar</button>
       <button class="btn btn-danger" id="btn-eliminar" onclick="UI.eliminarNumero()" style="display:none">🗑 Eliminar</button>
     </div>
   </div>
 
-  <div class="modal" id="modal-talonario">
+  <!-- MODAL: CREAR/EDITAR RIFA -->
+  <div class="modal" id="modal-rifa">
     <button class="modal-close" onclick="UI.closeModal()">✕</button>
-    <h2 class="modal-title">Nuevo Talonario</h2>
-    <p style="font-size: 13px; color: var(--color-text-muted); margin-bottom: 15px;">Se asignará automáticamente el siguiente rango de 100 números disponible.</p>
+    <h2 class="modal-title" id="modal-rifa-titulo">Nueva Rifa</h2>
     
     <div class="form-group">
-      <label class="form-label">Nombre del encargado *</label>
-      <input type="text" id="input-encargado" class="form-input" placeholder="Ej: Tía María" />
+      <label class="form-label">Título / Motivo de la rifa *</label>
+      <input type="text" id="rifa-titulo" class="form-input" placeholder="Ej: Viaje de egresados 2026" />
     </div>
-
-    <div class="form-group">
-      <label class="form-label">Datos bancarios para cobrar</label>
-      <div class="payment-options" style="grid-template-columns: 1fr;">
-        <label class="payment-opt">
-          <input type="radio" name="banco_tipo_nuevo" value="celeste" checked onchange="UI.toggleBankFieldsNuevo()" />
-          <span class="payment-label">Datos bancarios de Cele</span>
-        </label>
-        <label class="payment-opt">
-          <input type="radio" name="banco_tipo_nuevo" value="otros" onchange="UI.toggleBankFieldsNuevo()" />
-          <span class="payment-label">Otros datos bancarios</span>
-        </label>
-        <label class="payment-opt">
-          <input type="radio" name="banco_tipo_nuevo" value="omitir" onchange="UI.toggleBankFieldsNuevo()" />
-          <span class="payment-label">Omitir datos bancarios</span>
-        </label>
+    
+    <div class="payment-options" style="margin-bottom: 16px;">
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Total de números *</label>
+        <input type="number" id="rifa-cantidad" class="form-input" placeholder="Ej: 100" min="1" />
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Precio por número ($) *</label>
+        <input type="number" id="rifa-precio" class="form-input" placeholder="Ej: 3000" min="0" />
       </div>
     </div>
 
-    <div class="form-group" id="group-telefono-nuevo">
-      <label class="form-label">Tu número de WhatsApp (Opcional)</label>
-      <input type="tel" id="input-telefono-encargado" class="form-input" placeholder="Ej: 3865-123456" />
-    </div>
-
-    <div id="custom-bank-fields-nuevo" style="display: none; background: var(--color-surface-2); padding: 15px; border-radius: var(--radius-md); margin-bottom: 16px; border: 1px dashed var(--color-border);">
-       <label class="form-label">Tipo de cuenta</label>
-       <div class="payment-options" style="margin-bottom: 12px;">
-         <label class="payment-opt">
-            <input type="radio" name="banco_id_tipo_nuevo" value="alias" checked />
-            <span class="payment-label">Alias</span>
-         </label>
-         <label class="payment-opt">
-            <input type="radio" name="banco_id_tipo_nuevo" value="cbu" />
-            <span class="payment-label">CBU/CVU</span>
-         </label>
-       </div>
-       <input type="text" id="input-banco-id-nuevo" class="form-input" placeholder="Ingresa el Alias o CBU/CVU" style="margin-bottom: 10px;" />
-       <input type="text" id="input-banco-nombre-nuevo" class="form-input" placeholder="Nombre del Banco" style="margin-bottom: 10px;" />
-       <input type="text" id="input-banco-titular-nuevo" class="form-input" placeholder="Nombre del Titular" />
-    </div>
-
-    <div class="modal-actions">
-      <button class="btn btn-primary" onclick="UI.guardarTalonario()">Crear y Asignar Rango</button>
-    </div>
-  </div>
-
-  <div class="modal" id="modal-editar">
-    <button class="modal-close" onclick="UI.closeModal()">✕</button>
-    <h2 class="modal-title">Editar Talonario</h2>
-    <p style="font-size: 13px; color: var(--color-text-muted); margin-bottom: 15px;">Modifica el encargado, rango o los datos de cobro.</p>
-    
     <div class="form-group">
-      <label class="form-label">Nombre del encargado</label>
-      <input type="text" id="input-edit-encargado" class="form-input" placeholder="Ej: Tía María" />
+      <label class="form-label">Contraseña para administrar esta rifa *</label>
+      <input type="text" id="rifa-password" class="form-input" placeholder="Inventa una clave secreta" />
     </div>
 
-    <div class="form-group">
-      <label class="form-label">Nuevo número de inicio</label>
-      <input type="number" id="input-edit-inicio" class="form-input" min="1" oninput="UI.actualizarRangoEditFin()" placeholder="Ej: 301" />
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Número de fin (Automático)</label>
-      <input type="number" id="input-edit-fin" class="form-input" disabled />
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Datos bancarios para cobrar</label>
-      <div class="payment-options" style="grid-template-columns: 1fr;">
-        <label class="payment-opt">
-          <input type="radio" name="banco_tipo_edit" value="celeste" checked onchange="UI.toggleBankFieldsEdit()" />
-          <span class="payment-label">Datos bancarios de Cele</span>
-        </label>
-        <label class="payment-opt">
-          <input type="radio" name="banco_tipo_edit" value="otros" onchange="UI.toggleBankFieldsEdit()" />
-          <span class="payment-label">Otros datos bancarios</span>
-        </label>
-        <label class="payment-opt">
-          <input type="radio" name="banco_tipo_edit" value="omitir" onchange="UI.toggleBankFieldsEdit()" />
-          <span class="payment-label">Omitir datos bancarios</span>
-        </label>
+    <div style="border-top: 1px dashed var(--color-border); padding-top: 15px; margin-top: 15px;">
+      <h3 style="font-size: 14px; margin-bottom: 10px; color: var(--color-primary);">Sorteo</h3>
+      <div class="form-group">
+        <label class="form-label">Fecha del sorteo</label>
+        <input type="text" id="rifa-fecha" class="form-input" placeholder="Ej: Viernes 31 de Julio" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Método / Tómbola</label>
+        <input type="text" id="rifa-tombola" class="form-input" placeholder="Ej: Lotería de Tucumán Nocturna" />
       </div>
     </div>
 
-    <div class="form-group" id="group-telefono-edit">
-      <label class="form-label">Tu número de WhatsApp (Opcional)</label>
-      <input type="tel" id="input-edit-telefono-encargado" class="form-input" placeholder="Ej: 3865-123456" />
+    <div style="border-top: 1px dashed var(--color-border); padding-top: 15px; margin-top: 15px;">
+      <h3 style="font-size: 14px; margin-bottom: 10px; color: var(--color-primary);">Premios</h3>
+      <div id="premios-container"></div>
+      <button class="btn-icon" style="margin-top: 5px; width: 100%; border: 1px dashed var(--color-border);" onclick="UI.agregarCampoPremio()">+ Agregar Premio</button>
     </div>
 
-    <div id="custom-bank-fields-edit" style="display: none; background: var(--color-surface-2); padding: 15px; border-radius: var(--radius-md); margin-bottom: 16px; border: 1px dashed var(--color-border);">
-       <label class="form-label">Tipo de cuenta</label>
-       <div class="payment-options" style="margin-bottom: 12px;">
-         <label class="payment-opt">
-            <input type="radio" name="banco_id_tipo_edit" value="alias" checked />
-            <span class="payment-label">Alias</span>
-         </label>
-         <label class="payment-opt">
-            <input type="radio" name="banco_id_tipo_edit" value="cbu" />
-            <span class="payment-label">CBU/CVU</span>
-         </label>
-       </div>
-       <input type="text" id="input-banco-id-edit" class="form-input" placeholder="Ingresa el Alias o CBU/CVU" style="margin-bottom: 10px;" />
-       <input type="text" id="input-banco-nombre-edit" class="form-input" placeholder="Nombre del Banco" style="margin-bottom: 10px;" />
-       <input type="text" id="input-banco-titular-edit" class="form-input" placeholder="Nombre del Titular" />
+    <div style="border-top: 1px dashed var(--color-border); padding-top: 15px; margin-top: 15px;">
+      <h3 style="font-size: 14px; margin-bottom: 10px; color: var(--color-primary);">Datos de Cobro</h3>
+      <div class="form-group">
+        <label class="form-label">Alias / CBU para transferencias</label>
+        <input type="text" id="rifa-banco-id" class="form-input" placeholder="Alias o CBU" />
+      </div>
+      <div class="payment-options" style="margin-bottom: 16px;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Nombre del Banco</label>
+          <input type="text" id="rifa-banco-nombre" class="form-input" placeholder="Ej: Banco Galicia" />
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Titular</label>
+          <input type="text" id="rifa-banco-titular" class="form-input" placeholder="Nombre completo" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Número de celular (para enviar comprobantes)</label>
+        <input type="tel" id="rifa-telefono" class="form-input" placeholder="Ej: 3865-123456" />
+      </div>
     </div>
 
-    <div id="delete-reason-container" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--color-border);">
-       <label class="form-label" style="color: var(--color-danger);">Motivo de eliminación (Obligatorio) *</label>
-       <textarea id="input-motivo-borrado" class="form-input" rows="2" placeholder="Ej: Me equivoqué al ingresar mis datos bancarios..." style="resize: none;"></textarea>
-       <button class="btn btn-danger" style="width: 100%; margin-top: 10px;" onclick="UI.confirmarSolicitudBorrado()">Enviar solicitud de borrado</button>
-    </div>
-
-    <div class="modal-actions" id="modal-actions-edit">
-      <button class="btn btn-primary" id="btn-guardar-edicion" onclick="UI.guardarEdicionRango()">Guardar Cambios</button>
-      <button class="btn btn-danger" onclick="UI.eliminarTalonario()">🗑 Eliminar talonario</button>
+    <div class="modal-actions" style="margin-top: 25px;">
+      <button class="btn btn-primary" id="btn-guardar-rifa" onclick="UI.guardarRifa()">Guardar Rifa</button>
+      <button class="btn btn-danger" id="btn-eliminar-rifa" onclick="UI.eliminarRifaDefinitiva()" style="display:none;">🗑 Eliminar Rifa</button>
     </div>
   </div>
 
+  <!-- FLYER EXPORTACIÓN -->
   <div id="export-container" style="position: absolute; left: -9999px; top: 0; width: 1080px; background: linear-gradient(135deg, #FFEFBA 0%, #FFFFFF 100%); padding: 60px; font-family: 'Inter', sans-serif; color: #333;">
-    
     <div style="background: #ffffff; border-radius: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); padding: 50px; border: 5px solid #F5A623; position: relative; overflow: hidden;">
       <div style="position: absolute; top: 0; left: 0; width: 100%; height: 15px; background: repeating-linear-gradient(45deg, #F5A623, #F5A623 20px, #1E3045 20px, #1E3045 40px);"></div>
 
       <div style="text-align: center; margin-top: 20px; margin-bottom: 40px;">
-        <span style="display: inline-block; background: #F5A623; color: #000; font-size: 20px; font-weight: 800; padding: 8px 24px; border-radius: 30px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;">🎟️ Rifa Solidaria</span>
-        <h1 style="color: #1E3045; font-size: 70px; font-weight: 900; margin: 0 0 15px 0; text-transform: uppercase; line-height: 1;">Bono Contribución</h1>
-        <h2 style="font-size: 26px; font-weight: 600; color: #555; margin: 0; padding: 0 20px; line-height: 1.4;">Destinado a cubrir gastos de cirugía por reemplazo de cadera de <strong style="color: #F5A623; font-size: 30px;">Raúl Walter Maza</strong></h2>
+        <span style="display: inline-block; background: #F5A623; color: #000; font-size: 20px; font-weight: 800; padding: 8px 24px; border-radius: 30px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;">🎟️ Gran Rifa Solidaria</span>
+        <h1 id="export-titulo" style="color: #1E3045; font-size: 50px; font-weight: 900; margin: 0 0 15px 0; text-transform: uppercase; line-height: 1.1;">Título de la Rifa</h1>
       </div>
       
-      <div id="export-grid" style="display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px; margin-bottom: 40px; background: #f0f4f8; padding: 25px; border-radius: 20px;"></div>
+      <div id="export-grid" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 40px; background: #f0f4f8; padding: 25px; border-radius: 20px;"></div>
       
       <div style="display: flex; gap: 30px; margin-bottom: 30px;">
-        
         <div style="flex: 1; background: #FFF3E0; border: 4px dashed #F5A623; padding: 35px; border-radius: 24px; color: #4E342E;">
-          <p style="font-size: 36px; font-weight: 900; color: #D84315; margin: 0 0 25px 0; text-align: center; border-bottom: 2px dashed #F5A623; padding-bottom: 20px;">Valor: $3.000</p>
-          
+          <p style="font-size: 36px; font-weight: 900; color: #D84315; margin: 0 0 25px 0; text-align: center; border-bottom: 2px dashed #F5A623; padding-bottom: 20px;" id="export-precio">Valor: $0</p>
           <div id="export-banco-container" style="font-size: 21px; line-height: 1.6;">
-            <p style="margin: 0;" id="export-banco-id"><strong>Alias:</strong> CELESTEMAZA.UALA</p>
-            <p style="margin: 0; display: none;" id="export-banco-cbu"><strong>CBU/CVU:</strong> 34802000003065968</p>
-            <p style="margin: 0;" id="export-banco-nombre"><strong>Banco:</strong> Ualá Bank S.A.U</p>
-            <p style="margin: 0;" id="export-banco-titular"><strong>Titular:</strong> Celeste Abigail Maza</p>
+            <p style="margin: 0;" id="export-banco-id"><strong>Alias/CBU:</strong> -</p>
+            <p style="margin: 0;" id="export-banco-nombre"><strong>Banco:</strong> -</p>
+            <p style="margin: 0;" id="export-banco-titular"><strong>Titular:</strong> -</p>
           </div>
-
           <div id="export-comprobante-container" style="margin-top: 25px; background: #ffffff; border: 2px dashed #F5A623; padding: 15px; border-radius: 16px; text-align: center;">
             <p style="font-size: 18px; margin: 0 0 5px 0; color: #4E342E;">📲 Enviar comprobante al:</p>
-            <p style="font-size: 28px; font-weight: bold; color: #D84315; margin: 0;" id="export-telefono">3865-636557</p>
+            <p style="font-size: 28px; font-weight: bold; color: #D84315; margin: 0;" id="export-telefono">-</p>
           </div>
         </div>
         
         <div style="flex: 1; background: #FFF3E0; border: 4px dashed #F5A623; padding: 35px; border-radius: 24px;">
           <h3 style="font-size: 32px; font-weight: 900; color: #D84315; margin: 0 0 20px 0; text-align: center; text-transform: uppercase;">🎁 Premios</h3>
-          <ul style="list-style: none; padding: 0; margin: 0; font-size: 24px; line-height: 1.4; color: #4E342E;">
-            <li style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px;"><span style="font-size: 35px;">🥩</span> <div><strong>1° PREMIO:</strong><br>3kg de asado</div></li>
-            <li style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px;"><span style="font-size: 35px;">🥤</span> <div><strong>2° PREMIO:</strong><br>Promo Coca + Fernet + Hielo</div></li>
-            <li style="display: flex; align-items: center; gap: 15px;"><span style="font-size: 35px;">🎂</span> <div><strong>3° PREMIO:</strong><br>1 Torta</div></li>
-          </ul>
+          <ul id="export-premios-list" style="list-style: none; padding: 0; margin: 0; font-size: 24px; line-height: 1.4; color: #4E342E;"></ul>
         </div>
       </div>
       
       <div style="text-align: center; background: #ffebee; padding: 25px; border-radius: 20px; border: 2px solid #ffcdd2;">
-        <p style="margin: 0; font-weight: 900; font-size: 26px; color: #d32f2f;">📅 Sortea el Viernes 31 de Julio de 2026</p>
-        <p style="margin: 5px 0 0 0; font-size: 22px; font-weight: 700; color: #b71c1c;">por Tómbola Nocturna</p>
+        <p style="margin: 0; font-weight: 900; font-size: 26px; color: #d32f2f;" id="export-fecha">📅 Sortea el -</p>
+        <p style="margin: 5px 0 0 0; font-size: 22px; font-weight: 700; color: #b71c1c;" id="export-tombola">por -</p>
       </div>
-
     </div>
   </div>
+
+  <div id="toast" class="toast"></div>
 
   <script type="module" src="js/firebase-config.js"></script>
   <script type="module" src="js/db.js"></script>

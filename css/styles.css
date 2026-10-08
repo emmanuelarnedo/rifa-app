@@ -81,3 +81,4 @@ body { font-family: var(--font); background: var(--color-bg); color: var(--color
 
 .toast { position: fixed; bottom: 80px; left: 50%; transform: translate(-50%, 20px); background: #162232; border: 1px solid var(--color-primary); color: var(--color-text); padding: 12px 20px; border-radius: 30px; font-size: 13px; z-index: 9999; opacity: 0; pointer-events: none; transition: 0.2s; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
+.premio-input { flex-grow: 1; }
