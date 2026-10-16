@@ -557,8 +557,8 @@ export async function previsualizarImagen() {
 
   document.getElementById("export-rango-talonario").textContent = `Números del ${tituloInicio} al ${tituloFin}`;
   document.getElementById("export-precio").textContent = `Valor: $${r.precio}`;
-  document.getElementById("export-fecha").innerHTML = `📅 Sortea el ${r.fechaSorteo || '-'}`;
-  document.getElementById("export-tombola").innerHTML = `por ${r.tombola || '-'}`;
+  document.getElementById("export-fecha").innerHTML = `📅 Se sortea ${r.fechaSorteo || '-'}`;
+  document.getElementById("export-tombola").innerHTML = ` ${r.tombola || '-'}`;
 
   const banco = activo.banco || { tipo: "global" };
   const expBancoCont = document.getElementById("export-banco-container");
