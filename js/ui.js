@@ -240,6 +240,19 @@ export function actualizarMiniPreview() {
   gridCells[2].style.borderColor = c.secondary;
 }
 
+export function quitarImagenRifa() {
+  document.getElementById("imagen-actual-container").style.display = "none";
+  document.getElementById("rifa-imagen-eliminada").value = "true";
+  document.getElementById("rifa-imagen").value = "";
+}
+
+// EVENTO PARA AVISARLE AL USUARIO SOBRE EL CERO EN LOS TALONARIOS EXISTENTES
+export function manejarCambioCero(checkbox) {
+  if (_state.seleccionNumero && checkbox.checked) {
+    alert("Importante: Para que los talonarios ya generados comiencen desde el 0, debes ir a 'Editar Vendedor' -> 'Eliminar' y crear el talonario nuevamente.");
+  }
+}
+
 export function abrirModalCrearRifa() {
   document.getElementById("modal-rifa-titulo").textContent = "Nueva Rifa";
   document.getElementById("rifa-titulo-principal").value = "";
@@ -254,7 +267,12 @@ export function abrirModalCrearRifa() {
   document.getElementById("rifa-banco-nombre").value = "";
   document.getElementById("rifa-banco-titular").value = "";
   document.getElementById("rifa-telefono").value = "";
+  
+  document.getElementById("grupo-incluye-cero").style.display = "block";
   document.getElementById("rifa-incluye-cero").checked = false;
+  
+  document.getElementById("imagen-actual-container").style.display = "none";
+  document.getElementById("rifa-imagen-eliminada").value = "false";
   document.getElementById("rifa-imagen").value = "";
   
   document.querySelector('input[name="rifa_paleta"][value="rosa"]').checked = true;
@@ -284,8 +302,20 @@ export function abrirModalEditarRifa() {
   document.getElementById("rifa-banco-nombre").value = r.bancoNombre || "";
   document.getElementById("rifa-banco-titular").value = r.bancoTitular || "";
   document.getElementById("rifa-telefono").value = r.telefono || "";
+  
+  document.getElementById("grupo-incluye-cero").style.display = "block";
   document.getElementById("rifa-incluye-cero").checked = r.incluyeCero || false;
-  document.getElementById("rifa-imagen").value = ""; // Obliga a buscar uno nuevo si lo quieren cambiar, si no, mantiene el guardado
+  
+  document.getElementById("rifa-imagen-eliminada").value = "false";
+  document.getElementById("rifa-imagen").value = ""; 
+
+  const imgContainer = document.getElementById("imagen-actual-container");
+  if (r.imagenIlustrativa) {
+    document.getElementById("imagen-actual-preview").src = r.imagenIlustrativa;
+    imgContainer.style.display = "flex";
+  } else {
+    imgContainer.style.display = "none";
+  }
 
   if(r.paleta && document.querySelector(`input[name="rifa_paleta"][value="${r.paleta}"]`)) {
     document.querySelector(`input[name="rifa_paleta"][value="${r.paleta}"]`).checked = true;
@@ -352,6 +382,10 @@ export async function guardarRifa() {
   const fileInput = document.getElementById("rifa-imagen");
   let imagenIlustrativa = (_state.seleccionNumero && _state.currentRifa) ? _state.currentRifa.imagenIlustrativa : null;
   
+  if (document.getElementById("rifa-imagen-eliminada").value === "true") {
+    imagenIlustrativa = null;
+  }
+
   if (fileInput.files.length > 0) {
     imagenIlustrativa = await procesarImagen(fileInput.files[0]);
   }
@@ -409,7 +443,6 @@ export function abrirModalTalonario() {
   const cantTal = parseInt(r.cantidadTalonarios);
   const size = Math.floor(total / cantTal);
   
-  // Si incluyeCero es true, los numeros comienzan desde 0 y el offset base cambia.
   const base = r.incluyeCero ? 0 : 1; 
   
   let html = '';
@@ -699,5 +732,6 @@ function showToast(msg) {
 window.UI = { 
   closeModal, guardarNumero, eliminarNumero, previsualizarImagen, confirmarDescarga,
   abrirModalCrearRifa, actualizarMiniPreview, agregarCampoPremio, removerPremio, guardarRifa, abrirModalEditarRifa, eliminarRifaDefinitiva,
-  verificarPassword, volverAlInicio, abrirModalTalonario, guardarTalonario, abrirModalEditarTalonario, toggleBankFieldsTalonario, eliminarTalonario, toggleTheme
+  verificarPassword, volverAlInicio, abrirModalTalonario, guardarTalonario, abrirModalEditarTalonario, toggleBankFieldsTalonario, eliminarTalonario, toggleTheme,
+  quitarImagenRifa, manejarCambioCero
 };
