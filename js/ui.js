@@ -192,6 +192,31 @@ function renderGrid() {
   }
 }
 
+// Función auxiliar para reducir peso de imágenes antes de subirlas a Firestore
+function procesarImagen(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxW = 1000, maxH = 1000;
+        let w = img.width, h = img.height;
+        if (w > maxW || h > maxH) {
+          if (w > h) { h = Math.round((h * maxW) / w); w = maxW; }
+          else { w = Math.round((w * maxH) / h); h = maxH; }
+        }
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.75));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 // ---- RIFA GLOBAL (CREAR/EDITAR Y MINI PREVIEW) ----
 export function actualizarMiniPreview() {
   const tPrincipal = document.getElementById("rifa-titulo-principal").value || "GRAN RIFA";
@@ -229,6 +254,8 @@ export function abrirModalCrearRifa() {
   document.getElementById("rifa-banco-nombre").value = "";
   document.getElementById("rifa-banco-titular").value = "";
   document.getElementById("rifa-telefono").value = "";
+  document.getElementById("rifa-incluye-cero").checked = false;
+  document.getElementById("rifa-imagen").value = "";
   
   document.querySelector('input[name="rifa_paleta"][value="rosa"]').checked = true;
   actualizarMiniPreview();
@@ -257,6 +284,8 @@ export function abrirModalEditarRifa() {
   document.getElementById("rifa-banco-nombre").value = r.bancoNombre || "";
   document.getElementById("rifa-banco-titular").value = r.bancoTitular || "";
   document.getElementById("rifa-telefono").value = r.telefono || "";
+  document.getElementById("rifa-incluye-cero").checked = r.incluyeCero || false;
+  document.getElementById("rifa-imagen").value = ""; // Obliga a buscar uno nuevo si lo quieren cambiar, si no, mantiene el guardado
 
   if(r.paleta && document.querySelector(`input[name="rifa_paleta"][value="${r.paleta}"]`)) {
     document.querySelector(`input[name="rifa_paleta"][value="${r.paleta}"]`).checked = true;
@@ -309,6 +338,7 @@ export async function guardarRifa() {
   const cantidadTalonarios = parseInt(document.getElementById("rifa-talonarios").value);
   const precio = parseFloat(document.getElementById("rifa-precio").value);
   const password = document.getElementById("rifa-password").value.trim();
+  const incluyeCero = document.getElementById("rifa-incluye-cero").checked;
 
   if(!tituloPrincipal || !motivo || isNaN(cantidadNumeros) || isNaN(cantidadTalonarios) || isNaN(precio) || !password) {
     showToast("⚠️ Completa todos los campos obligatorios (*)"); return;
@@ -318,8 +348,16 @@ export async function guardarRifa() {
   const premios = [];
   inputsPremios.forEach(inp => { if(inp.value.trim() !== "") premios.push(inp.value.trim()); });
 
+  // Gestión de la imagen
+  const fileInput = document.getElementById("rifa-imagen");
+  let imagenIlustrativa = (_state.seleccionNumero && _state.currentRifa) ? _state.currentRifa.imagenIlustrativa : null;
+  
+  if (fileInput.files.length > 0) {
+    imagenIlustrativa = await procesarImagen(fileInput.files[0]);
+  }
+
   const payload = {
-    tituloPrincipal, motivo, paleta, cantidadNumeros, cantidadTalonarios, precio, password, premios,
+    tituloPrincipal, motivo, paleta, cantidadNumeros, cantidadTalonarios, precio, password, premios, incluyeCero, imagenIlustrativa,
     fechaSorteo: document.getElementById("rifa-fecha").value.trim(),
     tombola: document.getElementById("rifa-tombola").value.trim(),
     bancoId: document.getElementById("rifa-banco-id").value.trim(),
@@ -371,11 +409,14 @@ export function abrirModalTalonario() {
   const cantTal = parseInt(r.cantidadTalonarios);
   const size = Math.floor(total / cantTal);
   
+  // Si incluyeCero es true, los numeros comienzan desde 0 y el offset base cambia.
+  const base = r.incluyeCero ? 0 : 1; 
+  
   let html = '';
   let disponibles = 0;
   for (let i = 0; i < cantTal; i++) {
-    let inicio = i * size + 1;
-    let fin = (i === cantTal - 1) ? total : (i + 1) * size;
+    let inicio = i * size + base;
+    let fin = (i === cantTal - 1) ? (total - 1 + base) : (inicio + size - 1);
     let ocupado = _state.talonarios.some(t => t.inicio === inicio && t.fin === fin);
     if (!ocupado) {
       html += `
@@ -530,6 +571,18 @@ export async function previsualizarImagen() {
   const h1Motivo = document.getElementById("export-motivo");
   h1Motivo.textContent = r.motivo || "-";
   h1Motivo.style.color = c.text;
+
+  // Lógica para inyectar y mostrar la imagen opcional en el flyer
+  const expImgCont = document.getElementById("export-imagen-container");
+  const expImg = document.getElementById("export-imagen");
+  if (r.imagenIlustrativa) {
+    expImg.src = r.imagenIlustrativa;
+    expImg.style.borderColor = c.primary;
+    expImgCont.style.display = "block";
+  } else {
+    expImgCont.style.display = "none";
+    expImg.src = "";
+  }
 
   document.getElementById("export-grid").style.background = c.gridBg;
 
