@@ -122,6 +122,7 @@ export function updateTalonarios(data) {
   }
   renderTabs();
   renderGrid();
+  renderStats();
 }
 
 function renderHeaderRifa() {
@@ -129,16 +130,46 @@ function renderHeaderRifa() {
   document.getElementById("rifa-title-display").textContent = `${r.tituloPrincipal}: ${r.motivo}`;
 }
 
+// CÁLCULO ACTUALIZADO: SOLO TALONARIO ACTUAL Y SUMA AMBOS PAGOS
 function renderStats() {
   if(!_state.currentRifa) return;
-  let vendidos = 0, efectivo = 0;
-  const precio = Number(_state.currentRifa.precio);
-  Object.values(_state.numeros).forEach(num => {
-    vendidos++;
-    if (num.pago === "efectivo") efectivo += precio;
-  });
+  const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
+  
+  let vendidos = 0;
+  let efectivo = 0;
+  let transferencia = 0;
+  
+  if (activo) {
+    const precio = Number(_state.currentRifa.precio);
+    const padLength = Math.max(3, _state.currentRifa.cantidadNumeros.toString().length);
+    
+    for (let i = activo.inicio; i <= activo.fin; i++) {
+      const key = String(i).padStart(padLength, "0");
+      const num = _state.numeros[key];
+      if (num) {
+        vendidos++;
+        if (num.pago === "transferencia") {
+          transferencia += precio;
+        } else {
+          efectivo += precio; // por defecto o si es efectivo
+        }
+      }
+    }
+  }
+
+  const total = efectivo + transferencia;
+
   document.getElementById("stat-vendidos").textContent = vendidos;
-  document.getElementById("stat-efectivo").textContent = `$${efectivo.toLocaleString("es-AR")}`;
+  document.getElementById("stat-efectivo").textContent = `$${total.toLocaleString("es-AR")}`;
+
+  // Actualizamos también los textos ocultos del modal
+  const elEfectivo = document.getElementById("desglose-efectivo");
+  const elTransfer = document.getElementById("desglose-transferencia");
+  const elTotal = document.getElementById("desglose-total");
+  
+  if(elEfectivo) elEfectivo.textContent = `$${efectivo.toLocaleString("es-AR")}`;
+  if(elTransfer) elTransfer.textContent = `$${transferencia.toLocaleString("es-AR")}`;
+  if(elTotal) elTotal.textContent = `$${total.toLocaleString("es-AR")}`;
 }
 
 function renderTabs() {
@@ -150,7 +181,9 @@ function renderTabs() {
     btn.textContent = tal.encargado;
     btn.onclick = () => {
       _state.talonarioActivoId = tal.id;
-      renderTabs(); renderGrid();
+      renderTabs(); 
+      renderGrid();
+      renderStats(); // IMPORTANTE: Refresca recaudación al cambiar pestaña
     };
     container.appendChild(btn);
   });
@@ -579,6 +612,16 @@ export async function eliminarNumero() {
   } catch (err) { showToast("❌ Error al eliminar"); }
 }
 
+// ESTA FUNCIÓN ABRE EL NUEVO MODAL DE DESGLOSE DE RECAUDACIÓN
+export function abrirModalRecaudacion() {
+  if (!_state.talonarioActivoId) {
+    showToast("⚠️ Selecciona un vendedor primero");
+    return;
+  }
+  document.getElementById("modal-overlay").classList.add("active");
+  document.getElementById("modal-recaudacion").classList.add("active");
+}
+
 export function closeModal() {
   document.querySelectorAll(".modal").forEach(m => m.classList.remove("active"));
   document.getElementById("modal-overlay").classList.remove("active");
@@ -729,9 +772,10 @@ function showToast(msg) {
   setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
+// ACTUALIZACIÓN DE EXPORTS (Se sumó abrirModalRecaudacion)
 window.UI = { 
   closeModal, guardarNumero, eliminarNumero, previsualizarImagen, confirmarDescarga,
   abrirModalCrearRifa, actualizarMiniPreview, agregarCampoPremio, removerPremio, guardarRifa, abrirModalEditarRifa, eliminarRifaDefinitiva,
   verificarPassword, volverAlInicio, abrirModalTalonario, guardarTalonario, abrirModalEditarTalonario, toggleBankFieldsTalonario, eliminarTalonario, toggleTheme,
-  quitarImagenRifa, manejarCambioCero
+  quitarImagenRifa, manejarCambioCero, abrirModalRecaudacion
 };
