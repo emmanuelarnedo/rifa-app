@@ -12,8 +12,9 @@ let _state = {
   currentRifa: null,
   talonarios: [],
   talonarioActivoId: null,
-  numeros: {},
-  seleccionNumero: null,
+  numeros: {}, // Guarda data cruda
+  numerosInt: {}, // NUEVO: Índice inteligente que agrupa "001", "01" y "1"
+  seleccionNumero: null, // Ahora será un objeto con la DB Key y el Label visual
   rifaTargetParaLogin: null,
   previewDataUrl: null,
   editandoTalonario: false
@@ -107,8 +108,14 @@ export function volverAlInicio() {
   document.getElementById("view-rifa").style.display = "none";
 }
 
+// LOGICA DE ADAPTACIÓN INTELIGENTE: Map de los números al valor numérico base
 export function updateNumeros(data) {
   _state.numeros = data;
+  _state.numerosInt = {};
+  for (let key in data) {
+    const valorNumerico = parseInt(key, 10);
+    _state.numerosInt[valorNumerico] = { ...data[key], dbKey: key }; // Guardamos también la llave original de la base de datos
+  }
   renderStats();
   renderGrid();
 }
@@ -140,12 +147,9 @@ function renderStats() {
   
   if (activo) {
     const precio = Number(_state.currentRifa.precio);
-    // USAMOS EL CONFIG DE CIFRAS O EL DEFAULT DE 3
-    const padLength = Math.max(_state.currentRifa.cifras || 3, _state.currentRifa.cantidadNumeros.toString().length);
     
     for (let i = activo.inicio; i <= activo.fin; i++) {
-      const key = String(i).padStart(padLength, "0");
-      const num = _state.numeros[key];
+      const num = _state.numerosInt[i]; // Buscamos por el valor matemático real
       if (num) {
         vendidos++;
         if (num.pago === "transferencia") {
@@ -205,7 +209,6 @@ function renderGrid() {
   const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
   if (!activo) return;
 
-  // LECTURA DE CIFRAS
   const padLength = Math.max(_state.currentRifa.cifras || 3, _state.currentRifa.cantidadNumeros.toString().length);
   titulo.textContent = `Vendedor: ${activo.encargado} (${String(activo.inicio).padStart(padLength,'0')} al ${String(activo.fin).padStart(padLength,'0')})`;
   btnEditar.style.display = "inline-block"; 
@@ -213,14 +216,15 @@ function renderGrid() {
   
   grid.innerHTML = "";
   for (let i = activo.inicio; i <= activo.fin; i++) {
-    const key = String(i).padStart(padLength, "0");
-    const data = _state.numeros[key];
+    const labelVisual = String(i).padStart(padLength, "0"); // El diseño que ve el usuario (Ej: "01")
+    const data = _state.numerosInt[i]; // El chequeo inteligente (Ej: evalúa como 1)
     const sold = !!data;
     
     const cell = document.createElement("button");
     cell.className = "number-cell" + (sold ? " sold" : "");
-    cell.textContent = key;
-    cell.onclick = () => openModalVenta(key);
+    cell.textContent = labelVisual;
+    // Mandamos ambos valores: El int (i) para lógicas y el labelVisual para mostrar en pantalla
+    cell.onclick = () => openModalVenta(i, labelVisual);
     grid.appendChild(cell);
   }
 }
@@ -302,7 +306,7 @@ export function abrirModalCrearRifa() {
   
   document.getElementById("grupo-incluye-cero").style.display = "block";
   document.getElementById("rifa-incluye-cero").checked = false;
-  document.getElementById("rifa-cifras").value = "3"; // RESETA A 3 CIFRAS
+  document.getElementById("rifa-cifras").value = "3";
   
   document.getElementById("imagen-actual-container").style.display = "none";
   document.getElementById("rifa-imagen-eliminada").value = "false";
@@ -338,7 +342,7 @@ export function abrirModalEditarRifa() {
   
   document.getElementById("grupo-incluye-cero").style.display = "block";
   document.getElementById("rifa-incluye-cero").checked = r.incluyeCero || false;
-  document.getElementById("rifa-cifras").value = r.cifras || "3"; // CARGA LAS CIFRAS GUARDADAS
+  document.getElementById("rifa-cifras").value = r.cifras || "3";
   
   document.getElementById("rifa-imagen-eliminada").value = "false";
   document.getElementById("rifa-imagen").value = ""; 
@@ -362,7 +366,7 @@ export function abrirModalEditarRifa() {
   else agregarCampoPremio();
 
   document.getElementById("btn-eliminar-rifa").style.display = "block";
-  _state.seleccionNumero = r.id;
+  _state.seleccionNumero = r.id; // r.id no es la info de un numerito, es de la rifa. Usamos DB key de la rifa.
   document.getElementById("modal-overlay").classList.add("active");
   document.getElementById("modal-rifa").classList.add("active");
 }
@@ -403,7 +407,7 @@ export async function guardarRifa() {
   const precio = parseFloat(document.getElementById("rifa-precio").value);
   const password = document.getElementById("rifa-password").value.trim();
   const incluyeCero = document.getElementById("rifa-incluye-cero").checked;
-  const cifras = parseInt(document.getElementById("rifa-cifras").value) || 3; // GUARDA LAS CIFRAS ELEGIDAS
+  const cifras = parseInt(document.getElementById("rifa-cifras").value) || 3;
 
   if(!tituloPrincipal || !motivo || isNaN(cantidadNumeros) || isNaN(cantidadTalonarios) || isNaN(precio) || !password) {
     showToast("⚠️ Completa todos los campos obligatorios (*)"); return;
@@ -478,8 +482,6 @@ export function abrirModalTalonario() {
   const size = Math.floor(total / cantTal);
   
   const base = r.incluyeCero ? 0 : 1; 
-  
-  // APLICAMOS LAS CIFRAS PARA MOSTRAR LA SUGERENCIA DE TALONARIOS TAMBIÉN CON EL CERO ADELANTE
   const padLength = Math.max(r.cifras || 3, r.cantidadNumeros.toString().length);
   
   let html = '';
@@ -579,24 +581,29 @@ export async function eliminarTalonario() {
   } catch(err) { showToast("❌ Error al eliminar"); }
 }
 
-function openModalVenta(key) {
-  const data = _state.numeros[key];
+// AL ABRIR LA VENTA, GUARDAMOS EL REGISTRO VISUAL Y EL DBKEY EXÁCTO EN LA BD
+function openModalVenta(numeroInt, labelVisual) {
+  const data = _state.numerosInt[numeroInt];
   const isSold = !!data;
   document.getElementById("modal-title").textContent = isSold ? "Editar venta" : "Registrar venta";
-  document.getElementById("modal-number-badge").textContent = `#${key}`;
+  document.getElementById("modal-number-badge").textContent = `#${labelVisual}`;
   document.getElementById("input-nombre").value = data?.nombre || "";
   document.getElementById("input-telefono").value = data?.telefono || "";
   document.getElementById("btn-eliminar").style.display = isSold ? "block" : "none";
   document.getElementById("pago-efectivo").checked = data?.pago === "efectivo" || !isSold;
   document.getElementById("pago-transfer").checked = data?.pago === "transferencia";
 
-  _state.seleccionNumero = key;
+  _state.seleccionNumero = {
+    label: labelVisual, // Lo que ve el usuario (Ej: "01")
+    dbKey: data ? data.dbKey : labelVisual // La llave exacta para Firebase ("001" si ya estaba guardada, o "01" si es nueva)
+  };
+  
   document.getElementById("modal-overlay").classList.add("active");
   document.getElementById("modal-form").classList.add("active");
 }
 
 export async function guardarNumero() {
-  const key = _state.seleccionNumero;
+  const key = _state.seleccionNumero.dbKey; // Asegura actualizar el documento Firebase correcto (o crea uno nuevo con la cifra actual)
   const nombre = document.getElementById("input-nombre").value.trim();
   const pago = document.querySelector('input[name="pago"]:checked')?.value;
   const tel = document.getElementById("input-telefono").value.trim();
@@ -604,17 +611,17 @@ export async function guardarNumero() {
   document.getElementById("btn-guardar").disabled = true;
   try {
     await DB.guardarNumero(_state.currentRifa.id, key, { nombre, pago, telefono: tel || null });
-    showToast(`✅ #${key} guardado`); closeModal();
+    showToast(`✅ #${_state.seleccionNumero.label} guardado`); closeModal();
   } catch (err) { showToast("❌ Error al guardar"); } 
   finally { document.getElementById("btn-guardar").disabled = false; }
 }
 
 export async function eliminarNumero() {
-  const key = _state.seleccionNumero;
-  if (!confirm(`¿Liberar el número ${key}?`)) return;
+  const key = _state.seleccionNumero.dbKey;
+  if (!confirm(`¿Liberar el número ${_state.seleccionNumero.label}?`)) return;
   try { 
     await DB.eliminarNumero(_state.currentRifa.id, key); 
-    showToast(`🗑 #${key} liberado`); closeModal(); 
+    showToast(`🗑 #${_state.seleccionNumero.label} liberado`); closeModal(); 
   } catch (err) { showToast("❌ Error al eliminar"); }
 }
 
@@ -684,7 +691,6 @@ export async function previsualizarImagen() {
   document.getElementById("export-fecha").style.color = c.secondary;
   document.getElementById("export-tombola").style.color = c.text;
 
-  // LECTURA DE CIFRAS PARA EL FLYER
   const padLength = Math.max(r.cifras || 3, r.cantidadNumeros.toString().length);
   const tituloInicio = String(activo.inicio).padStart(padLength,'0');
   const tituloFin = String(activo.fin).padStart(padLength,'0');
@@ -724,10 +730,10 @@ export async function previsualizarImagen() {
   const cantidad = activo.fin - activo.inicio + 1;
 
   for (let i = activo.inicio; i <= activo.fin; i++) {
-    const key = String(i).padStart(padLength, "0");
-    const isSold = !!_state.numeros[key];
+    const labelVisual = String(i).padStart(padLength, "0");
+    const isSold = !!_state.numerosInt[i]; // Búsqueda inteligente
     const cell = document.createElement("div");
-    cell.textContent = key;
+    cell.textContent = labelVisual;
     cell.style.display = "flex"; cell.style.alignItems = "center"; cell.style.justifyContent = "center";
     cell.style.width = cantidad > 300 ? "30px" : "45px"; 
     cell.style.height = cantidad > 300 ? "30px" : "45px"; 
