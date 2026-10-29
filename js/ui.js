@@ -130,7 +130,6 @@ function renderHeaderRifa() {
   document.getElementById("rifa-title-display").textContent = `${r.tituloPrincipal}: ${r.motivo}`;
 }
 
-// CÁLCULO ACTUALIZADO: SOLO TALONARIO ACTUAL Y SUMA AMBOS PAGOS
 function renderStats() {
   if(!_state.currentRifa) return;
   const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
@@ -141,7 +140,8 @@ function renderStats() {
   
   if (activo) {
     const precio = Number(_state.currentRifa.precio);
-    const padLength = Math.max(3, _state.currentRifa.cantidadNumeros.toString().length);
+    // USAMOS EL CONFIG DE CIFRAS O EL DEFAULT DE 3
+    const padLength = Math.max(_state.currentRifa.cifras || 3, _state.currentRifa.cantidadNumeros.toString().length);
     
     for (let i = activo.inicio; i <= activo.fin; i++) {
       const key = String(i).padStart(padLength, "0");
@@ -151,7 +151,7 @@ function renderStats() {
         if (num.pago === "transferencia") {
           transferencia += precio;
         } else {
-          efectivo += precio; // por defecto o si es efectivo
+          efectivo += precio;
         }
       }
     }
@@ -162,7 +162,6 @@ function renderStats() {
   document.getElementById("stat-vendidos").textContent = vendidos;
   document.getElementById("stat-efectivo").textContent = `$${total.toLocaleString("es-AR")}`;
 
-  // Actualizamos también los textos ocultos del modal
   const elEfectivo = document.getElementById("desglose-efectivo");
   const elTransfer = document.getElementById("desglose-transferencia");
   const elTotal = document.getElementById("desglose-total");
@@ -183,7 +182,7 @@ function renderTabs() {
       _state.talonarioActivoId = tal.id;
       renderTabs(); 
       renderGrid();
-      renderStats(); // IMPORTANTE: Refresca recaudación al cambiar pestaña
+      renderStats();
     };
     container.appendChild(btn);
   });
@@ -206,7 +205,8 @@ function renderGrid() {
   const activo = _state.talonarios.find(t => t.id === _state.talonarioActivoId);
   if (!activo) return;
 
-  const padLength = Math.max(3, _state.currentRifa.cantidadNumeros.toString().length);
+  // LECTURA DE CIFRAS
+  const padLength = Math.max(_state.currentRifa.cifras || 3, _state.currentRifa.cantidadNumeros.toString().length);
   titulo.textContent = `Vendedor: ${activo.encargado} (${String(activo.inicio).padStart(padLength,'0')} al ${String(activo.fin).padStart(padLength,'0')})`;
   btnEditar.style.display = "inline-block"; 
   btnPreview.style.display = "inline-block"; 
@@ -279,7 +279,6 @@ export function quitarImagenRifa() {
   document.getElementById("rifa-imagen").value = "";
 }
 
-// EVENTO PARA AVISARLE AL USUARIO SOBRE EL CERO EN LOS TALONARIOS EXISTENTES
 export function manejarCambioCero(checkbox) {
   if (_state.seleccionNumero && checkbox.checked) {
     alert("Importante: Para que los talonarios ya generados comiencen desde el 0, debes ir a 'Editar Vendedor' -> 'Eliminar' y crear el talonario nuevamente.");
@@ -303,6 +302,7 @@ export function abrirModalCrearRifa() {
   
   document.getElementById("grupo-incluye-cero").style.display = "block";
   document.getElementById("rifa-incluye-cero").checked = false;
+  document.getElementById("rifa-cifras").value = "3"; // RESETA A 3 CIFRAS
   
   document.getElementById("imagen-actual-container").style.display = "none";
   document.getElementById("rifa-imagen-eliminada").value = "false";
@@ -338,6 +338,7 @@ export function abrirModalEditarRifa() {
   
   document.getElementById("grupo-incluye-cero").style.display = "block";
   document.getElementById("rifa-incluye-cero").checked = r.incluyeCero || false;
+  document.getElementById("rifa-cifras").value = r.cifras || "3"; // CARGA LAS CIFRAS GUARDADAS
   
   document.getElementById("rifa-imagen-eliminada").value = "false";
   document.getElementById("rifa-imagen").value = ""; 
@@ -402,6 +403,7 @@ export async function guardarRifa() {
   const precio = parseFloat(document.getElementById("rifa-precio").value);
   const password = document.getElementById("rifa-password").value.trim();
   const incluyeCero = document.getElementById("rifa-incluye-cero").checked;
+  const cifras = parseInt(document.getElementById("rifa-cifras").value) || 3; // GUARDA LAS CIFRAS ELEGIDAS
 
   if(!tituloPrincipal || !motivo || isNaN(cantidadNumeros) || isNaN(cantidadTalonarios) || isNaN(precio) || !password) {
     showToast("⚠️ Completa todos los campos obligatorios (*)"); return;
@@ -411,7 +413,6 @@ export async function guardarRifa() {
   const premios = [];
   inputsPremios.forEach(inp => { if(inp.value.trim() !== "") premios.push(inp.value.trim()); });
 
-  // Gestión de la imagen
   const fileInput = document.getElementById("rifa-imagen");
   let imagenIlustrativa = (_state.seleccionNumero && _state.currentRifa) ? _state.currentRifa.imagenIlustrativa : null;
   
@@ -424,7 +425,7 @@ export async function guardarRifa() {
   }
 
   const payload = {
-    tituloPrincipal, motivo, paleta, cantidadNumeros, cantidadTalonarios, precio, password, premios, incluyeCero, imagenIlustrativa,
+    tituloPrincipal, motivo, paleta, cantidadNumeros, cantidadTalonarios, precio, password, premios, incluyeCero, cifras, imagenIlustrativa,
     fechaSorteo: document.getElementById("rifa-fecha").value.trim(),
     tombola: document.getElementById("rifa-tombola").value.trim(),
     bancoId: document.getElementById("rifa-banco-id").value.trim(),
@@ -478,6 +479,9 @@ export function abrirModalTalonario() {
   
   const base = r.incluyeCero ? 0 : 1; 
   
+  // APLICAMOS LAS CIFRAS PARA MOSTRAR LA SUGERENCIA DE TALONARIOS TAMBIÉN CON EL CERO ADELANTE
+  const padLength = Math.max(r.cifras || 3, r.cantidadNumeros.toString().length);
+  
   let html = '';
   let disponibles = 0;
   for (let i = 0; i < cantTal; i++) {
@@ -485,10 +489,12 @@ export function abrirModalTalonario() {
     let fin = (i === cantTal - 1) ? (total - 1 + base) : (inicio + size - 1);
     let ocupado = _state.talonarios.some(t => t.inicio === inicio && t.fin === fin);
     if (!ocupado) {
+      const inicioStr = String(inicio).padStart(padLength, '0');
+      const finStr = String(fin).padStart(padLength, '0');
       html += `
         <label style="border: 1px solid var(--color-border); padding: 8px 12px; border-radius: 6px; cursor: pointer; background: var(--color-surface-2); font-size: 13px;">
           <input type="radio" name="talonario_rango_nuevo" value="${inicio}-${fin}" style="margin-right: 5px;" ${disponibles === 0 ? 'checked' : ''}>
-          ${inicio} al ${fin}
+          ${inicioStr} al ${finStr}
         </label>
       `;
       disponibles++;
@@ -612,7 +618,6 @@ export async function eliminarNumero() {
   } catch (err) { showToast("❌ Error al eliminar"); }
 }
 
-// ESTA FUNCIÓN ABRE EL NUEVO MODAL DE DESGLOSE DE RECAUDACIÓN
 export function abrirModalRecaudacion() {
   if (!_state.talonarioActivoId) {
     showToast("⚠️ Selecciona un vendedor primero");
@@ -648,7 +653,6 @@ export async function previsualizarImagen() {
   h1Motivo.textContent = r.motivo || "-";
   h1Motivo.style.color = c.text;
 
-  // Lógica para inyectar y mostrar la imagen opcional en el flyer
   const expImgCont = document.getElementById("export-imagen-container");
   const expImg = document.getElementById("export-imagen");
   if (r.imagenIlustrativa) {
@@ -680,7 +684,8 @@ export async function previsualizarImagen() {
   document.getElementById("export-fecha").style.color = c.secondary;
   document.getElementById("export-tombola").style.color = c.text;
 
-  const padLength = Math.max(3, r.cantidadNumeros.toString().length);
+  // LECTURA DE CIFRAS PARA EL FLYER
+  const padLength = Math.max(r.cifras || 3, r.cantidadNumeros.toString().length);
   const tituloInicio = String(activo.inicio).padStart(padLength,'0');
   const tituloFin = String(activo.fin).padStart(padLength,'0');
 
@@ -772,7 +777,6 @@ function showToast(msg) {
   setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
-// ACTUALIZACIÓN DE EXPORTS (Se sumó abrirModalRecaudacion)
 window.UI = { 
   closeModal, guardarNumero, eliminarNumero, previsualizarImagen, confirmarDescarga,
   abrirModalCrearRifa, actualizarMiniPreview, agregarCampoPremio, removerPremio, guardarRifa, abrirModalEditarRifa, eliminarRifaDefinitiva,

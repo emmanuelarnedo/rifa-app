@@ -38,7 +38,6 @@
         <div class="header-badge">🎟️ RIFA ACTIVA</div>
         <h1 class="site-title" id="rifa-title-display">Cargando...</h1>
         
-        <!-- ESTADÍSTICAS (AHORA HACEN CLIC Y MUESTRAN INFO DEL TALONARIO) -->
         <div class="stats-bar" style="cursor: pointer; transition: 0.2s; border: 1px solid var(--color-border);" onclick="UI.abrirModalRecaudacion()" title="Ver desglose de pagos">
           <div class="stat"><span class="stat-number" id="stat-vendidos">0</span><span class="stat-label">Vendidos (Vendedor)</span></div>
           <div class="stat-divider"></div>
@@ -208,12 +207,22 @@
       </div>
     </div>
 
-    <!-- SE AÑADIÓ EL EVENTO ONCHANGE PARA AVISARLE AL USUARIO SI ESTÁ EDITANDO -->
     <div class="form-group" id="grupo-incluye-cero" style="margin-bottom: 16px;">
         <label class="form-label">Empezar desde el cero (Ej: 000) *</label>
         <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
             <input type="checkbox" id="rifa-incluye-cero" onchange="UI.manejarCambioCero(this)"> Sí, el primer número disponible será el 0
         </label>
+    </div>
+
+    <!-- NUEVO CAMPO: CIFRAS DE LOS NÚMEROS -->
+    <div class="form-group" style="margin-bottom: 16px;">
+        <label class="form-label">Formato de los números (Cifras) *</label>
+        <select id="rifa-cifras" class="form-input">
+            <option value="2">2 cifras (Ej: 01, 50)</option>
+            <option value="3" selected>3 cifras (Ej: 001, 050)</option>
+            <option value="4">4 cifras (Ej: 0001, 0050)</option>
+            <option value="5">5 cifras (Ej: 00001)</option>
+        </select>
     </div>
 
     <div class="payment-options" style="margin-bottom: 16px;">
@@ -355,7 +364,7 @@
         <h2 id="export-rango-talonario" style="font-size: 26px; font-weight: 600; color: #555; margin: 10px 0 0 0; padding: 0 20px;">Números del 001 al 100</h2>
       </div>
 
-      <!-- CONTENEDOR NUEVO DE LA IMAGEN ILUSTRATIVA -->
+      <!-- CONTENEDOR DE LA IMAGEN ILUSTRATIVA -->
       <div id="export-imagen-container" style="text-align: center; margin-bottom: 30px; display: none;">
         <img id="export-imagen" src="" style="max-width: 90%; max-height: 450px; object-fit: contain; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 4px solid;" />
       </div>
